@@ -1,0 +1,420 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrgRole {
+  admin
+  developer
+  reviewer
+}
+
+enum ApiKeyStatus {
+  active
+  revoked
+}
+
+enum TraceStatus {
+  running
+  success
+  failed
+  processing_error
+}
+
+enum SpanType {
+  retrieval
+  llm_call
+  tool_call
+  tool_result
+  error
+}
+
+enum FailureCategory {
+  bad_retrieval
+  wrong_tool
+  invalid_tool_args
+  external_api_failure
+  timeout
+  hallucination
+  prompt_injection
+  evaluator_error
+  unknown
+}
+
+enum FailureSource {
+  ai
+  human
+}
+
+enum ReplayFieldType {
+  prompt
+  model
+  tool_arguments
+  retrieval_config
+  temperature
+}
+
+enum ReplayStatus {
+  queued
+  running
+  completed
+  failed
+}
+
+enum ReplayOutcome {
+  fixed
+  partially_fixed
+  not_fixed
+  new_failure
+}
+
+enum EvaluatorType {
+  exact_match
+  rule_based_rubric
+  llm_judge
+}
+
+enum EvaluationTargetType {
+  trace
+  replay
+}
+
+enum EvaluationStatus {
+  pending
+  completed
+  failed
+}
+
+enum TestRunStatus {
+  queued
+  running
+  completed
+  failed
+}
+
+enum AnnotationTargetType {
+  trace
+  evaluation
+}
+
+enum AnnotationVerdict {
+  correct
+  incorrect
+  unsafe
+  needs_review
+  wrong_category
+}
+
+enum LinkedEntityType {
+  trace
+  replay
+  regression_test
+  test_run
+  evaluation
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships         OrganizationMember[]
+  annotations         Annotation[]
+  evaluationOverrides Evaluation[]         @relation("HumanOverrideBy")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  OrganizationMember[]
+  projects Project[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrgRole  @default(developer)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  apiKeys         ApiKey[]
+  traces          Trace[]
+  regressionTests RegressionTest[]
+  testSuites      TestSuite[]
+  files           File[]
+
+  @@index([organizationId])
+}
+
+model ApiKey {
+  id            String       @id @default(cuid())
+  projectId     String
+  publicKey     String       @unique
+  secretKeyHash String
+  status        ApiKeyStatus @default(active)
+  createdAt     DateTime     @default(now())
+  revokedAt     DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Trace {
+  id              String      @id @default(cuid())
+  projectId       String
+  externalId      String?
+  name            String
+  environment     String?
+  status          TraceStatus @default(running)
+  input           Json?
+  metadata        Json?
+  totalDurationMs Int?
+  totalCost       Decimal?    @db.Decimal(10, 6)
+  startedAt       DateTime
+  endedAt         DateTime?
+  createdAt       DateTime    @default(now())
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spans       Span[]
+  failureTags FailureTag[]
+  replaysFrom Replay[]     @relation("SourceTrace")
+  replayInto  Replay?      @relation("ResultTrace")
+  evaluations Evaluation[] @relation("TraceEvaluations")
+  annotations Annotation[] @relation("TraceAnnotations")
+
+  @@unique([projectId, externalId])
+  @@index([projectId, status])
+  @@index([projectId, startedAt])
+}
+
+model Span {
+  id            String    @id @default(cuid())
+  traceId       String
+  parentId      String?
+  type          SpanType
+  name          String
+  model         String?
+  promptVersion String?
+  input         Json?
+  output        Json?
+  arguments     Json?
+  result        Json?
+  error         Json?
+  tokenUsage    Json?
+  startedAt     DateTime
+  endedAt       DateTime?
+
+  trace    Trace  @relation(fields: [traceId], references: [id], onDelete: Cascade)
+  parent   Span?  @relation("SpanChildren", fields: [parentId], references: [id])
+  children Span[] @relation("SpanChildren")
+
+  @@index([traceId])
+  @@index([parentId])
+}
+
+model FailureTag {
+  id         String          @id @default(cuid())
+  traceId    String
+  category   FailureCategory
+  confidence Float?
+  source     FailureSource
+  note       String?
+  createdAt  DateTime        @default(now())
+
+  trace Trace @relation(fields: [traceId], references: [id], onDelete: Cascade)
+
+  @@index([traceId])
+}
+
+model Replay {
+  id              String          @id @default(cuid())
+  sourceTraceId   String
+  resultTraceId   String?         @unique
+  changedField    ReplayFieldType
+  changedValue    Json
+  fieldResolution Json
+  status          ReplayStatus    @default(queued)
+  outcome         ReplayOutcome?
+  createdAt       DateTime        @default(now())
+  completedAt     DateTime?
+
+  sourceTrace Trace        @relation("SourceTrace", fields: [sourceTraceId], references: [id], onDelete: Cascade)
+  resultTrace Trace?       @relation("ResultTrace", fields: [resultTraceId], references: [id])
+  evaluations Evaluation[] @relation("ReplayEvaluations")
+
+  @@index([sourceTraceId])
+}
+
+model Evaluation {
+  id                    String               @id @default(cuid())
+  targetType            EvaluationTargetType
+  traceId               String?
+  replayId              String?
+  evaluatorType         EvaluatorType
+  evaluatorVersion      String?
+  rubricVersion         String?
+  config                Json?
+  input                 Json?
+  output                Json?
+  score                 Float?
+  confidence            Float?
+  reason                String?
+  status                EvaluationStatus     @default(pending)
+  humanOverrideScore    Float?
+  humanOverrideReason   String?
+  humanOverrideByUserId String?
+  createdAt             DateTime             @default(now())
+  completedAt           DateTime?
+
+  trace           Trace?          @relation("TraceEvaluations", fields: [traceId], references: [id], onDelete: Cascade)
+  replay          Replay?         @relation("ReplayEvaluations", fields: [replayId], references: [id], onDelete: Cascade)
+  humanOverrideBy User?           @relation("HumanOverrideBy", fields: [humanOverrideByUserId], references: [id])
+  annotations     Annotation[]    @relation("EvaluationAnnotations")
+  testRunResults  TestRunResult[]
+
+  @@index([traceId])
+  @@index([replayId])
+}
+
+model RegressionTest {
+  id               String        @id @default(cuid())
+  projectId        String
+  name             String
+  input            Json
+  expectedBehavior String
+  evaluatorType    EvaluatorType
+  evaluatorConfig  Json?
+  minScore         Float
+  promptVersion    String?
+  model            String?
+  environment      String?
+  sourceTraceId    String?
+  createdAt        DateTime      @default(now())
+
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suiteMemberships TestSuiteTest[]
+  testRunResults   TestRunResult[]
+
+  @@index([projectId])
+}
+
+model TestSuite {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  createdAt DateTime @default(now())
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tests   TestSuiteTest[]
+  runs    TestRun[]
+
+  @@index([projectId])
+}
+
+model TestSuiteTest {
+  id               String @id @default(cuid())
+  testSuiteId      String
+  regressionTestId String
+
+  testSuite      TestSuite      @relation(fields: [testSuiteId], references: [id], onDelete: Cascade)
+  regressionTest RegressionTest @relation(fields: [regressionTestId], references: [id], onDelete: Cascade)
+
+  @@unique([testSuiteId, regressionTestId])
+}
+
+model TestRun {
+  id            String        @id @default(cuid())
+  testSuiteId   String
+  promptVersion String?
+  model         String?
+  status        TestRunStatus @default(queued)
+  passedCount   Int           @default(0)
+  failedCount   Int           @default(0)
+  skippedCount  Int           @default(0)
+  startedAt     DateTime      @default(now())
+  completedAt   DateTime?
+
+  testSuite TestSuite       @relation(fields: [testSuiteId], references: [id], onDelete: Cascade)
+  results   TestRunResult[]
+
+  @@index([testSuiteId])
+}
+
+model TestRunResult {
+  id               String   @id @default(cuid())
+  testRunId        String
+  regressionTestId String
+  replayId         String?
+  evaluationId     String?
+  passed           Boolean?
+  score            Float?
+  createdAt        DateTime @default(now())
+
+  testRun        TestRun        @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  regressionTest RegressionTest @relation(fields: [regressionTestId], references: [id], onDelete: Cascade)
+  evaluation     Evaluation?    @relation(fields: [evaluationId], references: [id])
+
+  @@index([testRunId])
+  @@index([regressionTestId])
+}
+
+model Annotation {
+  id           String               @id @default(cuid())
+  targetType   AnnotationTargetType
+  traceId      String?
+  evaluationId String?
+  reviewerId   String
+  verdict      AnnotationVerdict
+  note         String?
+  createdAt    DateTime             @default(now())
+
+  reviewer   User        @relation(fields: [reviewerId], references: [id])
+  trace      Trace?      @relation("TraceAnnotations", fields: [traceId], references: [id], onDelete: Cascade)
+  evaluation Evaluation? @relation("EvaluationAnnotations", fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([traceId])
+  @@index([evaluationId])
+}
+
+model File {
+  id               String            @id @default(cuid())
+  projectId        String
+  linkedEntityType LinkedEntityType?
+  linkedEntityId   String?
+  r2Key            String
+  filename         String
+  size             Int
+  contentType      String
+  createdAt        DateTime          @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([linkedEntityType, linkedEntityId])
+}
