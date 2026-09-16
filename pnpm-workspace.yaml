@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Declarative approval for postinstall build scripts. Without this,
+# pnpm skips native compiles (bcrypt) and binary downloads (esbuild), which
+# breaks password hashing and the build/test toolchains.
+onlyBuiltDependencies:
+  - "@scarf/scarf"
+  - "bcrypt"
+  - "esbuild"
+  - "msgpackr-extract"
+  - "@prisma/engines"
+  - "prisma"
