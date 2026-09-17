@@ -282,6 +282,47 @@ describe('M1 — Auth, Organizations & Projects (e2e)', () => {
     await http.get('/__probe/ingest').set('x-api-key', fullKey).expect(401);
   });
 
+  it('rotating an API key revokes the old one and issues a working replacement', async () => {
+    const token = await registerAndLogin('rotate@example.com');
+    const org = await http
+      .post('/orgs')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Rotate Org' })
+      .expect(201);
+    const project = await http
+      .post(`/orgs/${org.body.id as string}/projects`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Rotate Project' })
+      .expect(201);
+    const projectId = project.body.project.id as string;
+    const key = await http
+      .post(`/projects/${projectId}/api-keys`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(201);
+    const oldKey = key.body.key as string;
+    const keyId = key.body.id as string;
+
+    const rotated = await http
+      .post(`/projects/${projectId}/api-keys/${keyId}/rotate`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(201);
+    expect(rotated.body.revokedKeyId as string).toBe(keyId);
+    const newKey = rotated.body.apiKey.key as string;
+    expect(newKey).toMatch(/^pk_live_/);
+    expect(newKey).not.toBe(oldKey);
+
+    await http.get('/__probe/ingest').set('x-api-key', oldKey).expect(401);
+    await http.get('/__probe/ingest').set('x-api-key', newKey).expect(200);
+
+    await http
+      .post(`/projects/${projectId}/api-keys/does-not-exist/rotate`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(404);
+  });
+
   it('reviewer role cannot create projects or keys, admin can invite members', async () => {
     const adminToken = await registerAndLogin('adminrev@example.com');
     await registerAndLogin('reviewer@example.com');

@@ -110,4 +110,28 @@ export class ApiKeysService {
       revokedAt: updated.revokedAt,
     };
   }
+
+  async rotate(
+    projectId: string,
+    keyId: string,
+  ): Promise<{ apiKey: GeneratedApiKey; revokedKeyId: string }> {
+    const existing = await this.prisma.apiKey.findFirst({
+      where: { id: keyId, projectId },
+    });
+    if (existing === null) {
+      throw new NotFoundException('API key not found');
+    }
+    // Revoke + replacement are atomic: rotation never leaves the project
+    // with zero active keys (on failure) or two live keys (on retry).
+    return this.prisma.$transaction(async (tx) => {
+      if (existing.status === 'active') {
+        await tx.apiKey.update({
+          where: { id: keyId },
+          data: { status: 'revoked', revokedAt: new Date() },
+        });
+      }
+      const apiKey = await this.generate(projectId, tx);
+      return { apiKey, revokedKeyId: keyId };
+    });
+  }
 }

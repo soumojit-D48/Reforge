@@ -71,4 +71,16 @@ export class ProjectsController {
   ): Promise<{ id: string; status: string }> {
     return this.apiKeys.revoke(projectId, keyId);
   }
+
+  @ProjectAccess('admin')
+  @Post('projects/:projectId/api-keys/:keyId/rotate')
+  rotateKey(
+    @Param('projectId') projectId: string,
+    @Param('keyId') keyId: string,
+  ): Promise<{
+    apiKey: { id: string; publicKey: string; key: string };
+    revokedKeyId: string;
+  }> {
+    return this.apiKeys.rotate(projectId, keyId);
+  }
 }
