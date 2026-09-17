@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { clearToken, getToken } from "../../src/lib/auth";
+import { OrgSwitcher } from "../../src/components/org-switcher";
 
 export default function DashboardLayout({
   children,
@@ -42,6 +43,9 @@ export default function DashboardLayout({
           Log out
         </button>
       </header>
+      <div className="border-b px-6 py-2">
+        <OrgSwitcher />
+      </div>
       <main className="mx-auto max-w-4xl p-6">{children}</main>
     </div>
   );

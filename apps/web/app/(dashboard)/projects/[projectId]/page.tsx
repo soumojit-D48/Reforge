@@ -67,6 +67,24 @@ export default function ProjectPage({
     },
   });
 
+  const rotateMutation = useMutation({
+    mutationFn: (keyId: string) => {
+      const token = getToken();
+      if (token === null) {
+        throw new ApiError(401, "Not authenticated");
+      }
+      return api.rotateApiKey(token, projectId, keyId);
+    },
+    onSuccess: (res) => {
+      setError(null);
+      setFreshKey(res.apiKey.key);
+      void queryClient.invalidateQueries({ queryKey: ["apiKeys", projectId] });
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : "Failed to rotate key");
+    },
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Project API keys</h1>
@@ -104,14 +122,24 @@ export default function ProjectPage({
               <p className="text-xs text-gray-500">Status: {k.status}</p>
             </div>
             {k.status === "active" && (
-              <button
-                type="button"
-                disabled={revokeMutation.isPending}
-                onClick={() => revokeMutation.mutate(k.id)}
-                className="rounded border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50 disabled:opacity-50"
-              >
-                Revoke
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={rotateMutation.isPending}
+                  onClick={() => rotateMutation.mutate(k.id)}
+                  className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Rotate
+                </button>
+                <button
+                  type="button"
+                  disabled={revokeMutation.isPending}
+                  onClick={() => revokeMutation.mutate(k.id)}
+                  className="rounded border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Revoke
+                </button>
+              </div>
             )}
           </li>
         ))}

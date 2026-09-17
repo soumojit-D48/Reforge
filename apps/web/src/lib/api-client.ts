@@ -117,4 +117,10 @@ export const api = {
       method: 'DELETE',
       token,
     }),
+
+  rotateApiKey: (token: string, projectId: string, keyId: string) =>
+    request<{ apiKey: GeneratedKey; revokedKeyId: string }>(
+      `/projects/${projectId}/api-keys/${keyId}/rotate`,
+      { method: 'POST', token },
+    ),
 };
