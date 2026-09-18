@@ -1,7 +1,12 @@
-import { ForbiddenException, ValidationPipe } from '@nestjs/common';
+import {
+  ForbiddenException,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { json } from 'express';
 import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor.js';
@@ -19,6 +24,13 @@ function parseOrigins(raw: string | undefined): string[] {
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+
+  // the default; only health opts out via VERSION_NEUTRAL.
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
+
+  // Ingestion payloads are the largest bodies we accept — cap JSON parsing
+  // globally (default 1mb, env-overridable); oversize → 413 via the filter.
+  app.use(json({ limit: config.get<string>('JSON_BODY_LIMIT') ?? '1mb' }));
 
   const allowlist = parseOrigins(config.get<string>('WEB_ORIGINS'));
   app.enableCors({

@@ -52,6 +52,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           error = parsed['error'];
         }
       }
+    } else if (isBodyTooLarge(exception)) {
+      // Express json({ limit }) rejects oversize bodies with a plain
+      // PayloadTooLargeError (not an HttpException) — surface it as 413
+      // instead of a misleading 500.
+      status = HttpStatus.PAYLOAD_TOO_LARGE;
+      error = 'Payload Too Large';
+      message = (exception as Error).message;
     } else {
       this.logger.error(
         `Unhandled error [${correlationId}]: ${(exception as Error)?.message ?? 'unknown'}`,
@@ -67,4 +74,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
     response.status(status).json(body);
   }
+}
+
+function isBodyTooLarge(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) {
+    return false;
+  }
+  const record = exception as Record<string, unknown>;
+  return record['status'] === 413 || record['type'] === 'entity.too.large';
 }
