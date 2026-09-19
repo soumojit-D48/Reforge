@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { use, useState } from "react";
+import Link from "next/link";
 import {
   ApiError,
   api,
@@ -87,7 +88,15 @@ export default function ProjectPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Project API keys</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Project API keys</h1>
+        <Link
+          href={`/projects/${projectId}/runs`}
+          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+        >
+          Open runs
+        </Link>
+      </div>
 
       {freshKey !== null && (
         <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm">
