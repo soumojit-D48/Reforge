@@ -7,8 +7,8 @@ import {
   ApiError,
   api,
   type ApiKeyView,
-} from "../../../../src/lib/api-client";
-import { getToken } from "../../../../src/lib/auth";
+} from "../../../../lib/api-client";
+import { getToken } from "../../../../lib/auth";
 
 export default function ProjectPage({
   params,

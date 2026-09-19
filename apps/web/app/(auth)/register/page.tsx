@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { ApiError, api } from "../../../src/lib/api-client";
-import { setToken } from "../../../src/lib/auth";
+import { ApiError, api } from "../../../lib/api-client";
+import { setToken } from "../../../lib/auth";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),

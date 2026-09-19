@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { ApiError, api, type Organization } from "../../../src/lib/api-client";
-import { getToken } from "../../../src/lib/auth";
+import { ApiError, api, type Organization } from "../../../lib/api-client";
+import { getToken } from "../../../lib/auth";
 
 export default function OrgsPage(): React.JSX.Element {
   const queryClient = useQueryClient();

@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { use, useState } from "react";
-import { ApiError, api, type Project } from "../../../../../src/lib/api-client";
-import { getToken } from "../../../../../src/lib/auth";
+import { ApiError, api, type Project } from "../../../../../lib/api-client";
+import { getToken } from "../../../../../lib/auth";
 
 export default function OrgProjectsPage({
   params,

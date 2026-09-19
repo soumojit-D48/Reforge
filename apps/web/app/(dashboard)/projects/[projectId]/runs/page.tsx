@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { use, useState } from 'react';
-import type { TraceListFilters, TraceStatus } from '../../../../../src/lib/api-client';
-import { useTraceList } from '../../../../../src/hooks/use-trace-query';
+import type { TraceListFilters, TraceStatus } from '../../../../../lib/api-client';
+import { useTraceList } from '../../../../../hooks/use-trace-query';
 
 const statuses: TraceStatus[] = ['running', 'success', 'failed', 'processing_error'];
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { TraceSpan } from '../../src/lib/api-client';
+import type { TraceSpan } from '../../lib/api-client';
 
 function valueText(value: unknown): string {
   if (value === null || value === undefined) {

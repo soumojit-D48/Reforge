@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { use } from 'react';
 import { TraceTimeline } from '../../../../../../components/timeline/TraceTimeline';
-import { useTrace } from '../../../../../../src/hooks/use-trace-query';
+import { useTrace } from '../../../../../../hooks/use-trace-query';
 
 export default function TracePage({ params }: { params: Promise<{ projectId: string; traceId: string }> }): React.JSX.Element {
   const { projectId, traceId } = use(params);

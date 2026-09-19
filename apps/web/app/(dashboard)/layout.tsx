@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { clearToken, getToken } from "../../src/lib/auth";
-import { OrgSwitcher } from "../../src/components/org-switcher";
+import { clearToken, getToken } from "../../lib/auth";
+import { OrgSwitcher } from "../../components/org-switcher";
 
 export default function DashboardLayout({
   children,

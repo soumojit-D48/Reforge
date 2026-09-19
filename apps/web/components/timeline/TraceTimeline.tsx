@@ -1,6 +1,6 @@
 'use client';
 
-import type { TraceSpan } from '../../src/lib/api-client';
+import type { TraceSpan } from '../../lib/api-client';
 import { SpanNode } from './SpanNode';
 
 export function TraceTimeline({ spans }: { spans: TraceSpan[] }): React.JSX.Element {
