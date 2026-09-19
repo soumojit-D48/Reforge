@@ -22,7 +22,6 @@ coverage/
 *.tsbuildinfo
 
 # Logs
-logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -72,3 +71,6 @@ prisma/*.db-journal
 
 /docs
 /AGENTS.md
+
+logs/*.jsonl
+*.logs.jsonl

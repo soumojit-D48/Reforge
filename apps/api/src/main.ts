@@ -10,6 +10,7 @@ import { json } from 'express';
 import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor.js';
+import { ReforgeLogger } from './common/logging/reforge-logger.js';
 
 function parseOrigins(raw: string | undefined): string[] {
   if (raw === undefined || raw.trim() === '') {
@@ -22,7 +23,8 @@ function parseOrigins(raw: string | undefined): string[] {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const logger = new ReforgeLogger();
+  const app = await NestFactory.create(AppModule, { logger });
   const config = app.get(ConfigService);
 
   // the default; only health opts out via VERSION_NEUTRAL.
