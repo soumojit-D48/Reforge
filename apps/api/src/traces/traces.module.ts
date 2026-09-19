@@ -3,9 +3,13 @@ import { BullModule } from '@nestjs/bullmq';
 import { AiModule } from '../ai/ai.module.js';
 import { TRACE_PROCESSING_QUEUE } from '../ingestion/ingestion.constants.js';
 import { TraceProcessingProcessor } from './trace-processing.processor.js';
+import { TracesController } from './traces.controller.js';
+import { TracesService } from './traces.service.js';
 
 @Module({
   imports: [BullModule.registerQueue({ name: TRACE_PROCESSING_QUEUE }), AiModule],
-  providers: [TraceProcessingProcessor],
+  controllers: [TracesController],
+  providers: [TraceProcessingProcessor, TracesService],
+  exports: [TracesService],
 })
 export class TracesModule {}
