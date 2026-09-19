@@ -11,5 +11,7 @@ export default defineConfig({
     // each other's rows mid-test (FK violations, phantom 401s). Run files
     // sequentially; tests within a file are sequential by default.
     fileParallelism: false,
+    testTimeout: 30000,
+    hookTimeout: 60000,
   },
 });

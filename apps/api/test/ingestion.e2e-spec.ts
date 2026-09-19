@@ -138,6 +138,8 @@ describe('M2 — Trace Ingestion Pipeline (e2e)', () => {
   }
 
   beforeAll(async () => {
+    process.env['JSON_BODY_LIMIT'] = '4kb';
+    process.env['RATELIMIT_MAX_REQUESTS'] = '50';
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })

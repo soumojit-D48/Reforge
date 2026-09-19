@@ -79,6 +79,30 @@ export class ProjectAccessGuard implements CanActivate {
       return true;
     }
 
+    const traceId = params['traceId'];
+    if (traceId !== undefined) {
+      const trace = await this.prisma.trace.findUnique({
+        where: { id: traceId },
+        select: { project: { select: { organizationId: true } } },
+      });
+      if (trace === null) {
+        throw new ForbiddenException('No access to this trace');
+      }
+      const membership = await this.prisma.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId: trace.project.organizationId,
+            userId: user.userId,
+          },
+        },
+      });
+      if (membership === null) {
+        throw new ForbiddenException('No access to this trace');
+      }
+      this.assertRole(membership.role, allowedRoles);
+      return true;
+    }
+
     throw new ForbiddenException('Project access could not be determined');
   }
 
