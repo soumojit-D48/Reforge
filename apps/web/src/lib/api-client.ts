@@ -84,6 +84,94 @@ export interface ApiKeyView {
   revokedAt: string | null;
 }
 
+export type TraceStatus = 'running' | 'success' | 'failed' | 'processing_error';
+
+export interface TraceListItem {
+  id: string;
+  name: string;
+  environment: string | null;
+  status: TraceStatus;
+  totalDurationMs: number | null;
+  totalCost: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  createdAt: string;
+  models: string[];
+  failureCategories: string[];
+}
+
+export interface TraceListResponse {
+  items: TraceListItem[];
+  nextCursor: string | null;
+  limit: number;
+}
+
+export interface TraceSpan {
+  id: string;
+  parentId: string | null;
+  type: string;
+  name: string;
+  model: string | null;
+  promptVersion: string | null;
+  input: unknown;
+  output: unknown;
+  arguments: unknown;
+  result: unknown;
+  error: unknown;
+  tokenUsage: unknown;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number | null;
+  children: TraceSpan[];
+}
+
+export interface TraceDetail {
+  id: string;
+  projectId: string;
+  externalId: string | null;
+  name: string;
+  environment: string | null;
+  status: TraceStatus;
+  input: unknown;
+  metadata: unknown;
+  totalDurationMs: number | null;
+  totalCost: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  createdAt: string;
+  failureTags: {
+    id: string;
+    category: string;
+    confidence: number | null;
+    source: string;
+    note: string | null;
+    createdAt: string;
+  }[];
+  spans: TraceSpan[];
+}
+
+export interface TraceListFilters {
+  status?: TraceStatus;
+  environment?: string;
+  model?: string;
+  from?: string;
+  to?: string;
+  errorType?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+function queryString(filters: TraceListFilters): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const encoded = params.toString();
+  return encoded.length === 0 ? '' : `?${encoded}`;
+}
+
 export const api = {
   register: (input: { email: string; password: string; name: string }) =>
     request<AuthResponse>('/auth/register', { method: 'POST', body: input }),
@@ -126,4 +214,13 @@ export const api = {
       `/projects/${projectId}/api-keys/${keyId}/rotate`,
       { method: 'POST', token },
     ),
+
+  listTraces: (token: string, projectId: string, filters: TraceListFilters = {}) =>
+    request<TraceListResponse>(
+      `/projects/${projectId}/traces${queryString(filters)}`,
+      { token },
+    ),
+
+  getTrace: (token: string, traceId: string) =>
+    request<TraceDetail>(`/traces/${traceId}`, { token }),
 };
