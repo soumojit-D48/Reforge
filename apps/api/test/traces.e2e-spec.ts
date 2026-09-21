@@ -10,7 +10,7 @@ import { GlobalExceptionFilter } from './../src/common/filters/global-exception.
 import { CorrelationIdInterceptor } from './../src/common/interceptors/correlation-id.interceptor.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 
-describe('M3 — trace reads (e2e)', () => {
+describe('M4 — failure tagging (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let http: ReturnType<typeof request>;
@@ -99,5 +99,46 @@ describe('M3 — trace reads (e2e)', () => {
     expect(tool?.children[0]?.name).toBe('nested-error');
     expect(tool?.children[0]?.arguments).toBeNull();
     await http.get(`/v1/traces/${traceId}`).expect(401);
+  });
+
+  it('creates and updates a human failure tag without replacing AI suggestions', async () => {
+    const list = await http
+      .get(`/v1/projects/${projectId}/traces`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const traceId = list.body.items[0].id as string;
+    const aiTag = await prisma.failureTag.create({
+      data: {
+        traceId,
+        category: 'timeout',
+        confidence: 0.8,
+        source: 'ai',
+      },
+    });
+
+    const created = await http
+      .post(`/v1/traces/${traceId}/failure-tag`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ category: 'wrong_tool', note: 'The selected tool was incorrect.' })
+      .expect(201);
+    expect(created.body.source).toBe('human');
+    expect(created.body.note).toBe('The selected tool was incorrect.');
+
+    const updated = await http
+      .patch(`/v1/traces/${traceId}/failure-tag/${created.body.id as string}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ category: 'invalid_tool_args', note: 'The arguments omitted the order id.' })
+      .expect(200);
+    expect(updated.body.category).toBe('invalid_tool_args');
+    expect(updated.body.source).toBe('human');
+
+    await http
+      .patch(`/v1/traces/${traceId}/failure-tag/${aiTag.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ category: 'unknown' })
+      .expect(409);
+    const tags = await prisma.failureTag.findMany({ where: { traceId } });
+    expect(tags).toHaveLength(2);
+    expect(tags.filter((tag) => tag.source === 'ai')).toHaveLength(1);
   });
 });
