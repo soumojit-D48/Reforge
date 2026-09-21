@@ -85,6 +85,16 @@ export interface ApiKeyView {
 }
 
 export type TraceStatus = 'running' | 'success' | 'failed' | 'processing_error';
+export type FailureCategory =
+  | 'bad_retrieval'
+  | 'wrong_tool'
+  | 'invalid_tool_args'
+  | 'external_api_failure'
+  | 'timeout'
+  | 'hallucination'
+  | 'prompt_injection'
+  | 'evaluator_error'
+  | 'unknown';
 
 export interface TraceListItem {
   id: string;
@@ -141,7 +151,7 @@ export interface TraceDetail {
   createdAt: string;
   failureTags: {
     id: string;
-    category: string;
+    category: FailureCategory;
     confidence: number | null;
     source: string;
     note: string | null;
@@ -223,4 +233,25 @@ export const api = {
 
   getTrace: (token: string, traceId: string) =>
     request<TraceDetail>(`/traces/${traceId}`, { token }),
+
+  createFailureTag: (
+    token: string,
+    traceId: string,
+    input: { category: FailureCategory; note?: string },
+  ) =>
+    request<TraceDetail['failureTags'][number]>(
+      `/traces/${traceId}/failure-tag`,
+      { method: 'POST', body: input, token },
+    ),
+
+  updateFailureTag: (
+    token: string,
+    traceId: string,
+    tagId: string,
+    input: { category?: FailureCategory; note?: string | null },
+  ) =>
+    request<TraceDetail['failureTags'][number]>(
+      `/traces/${traceId}/failure-tag/${tagId}`,
+      { method: 'PATCH', body: input, token },
+    ),
 };
