@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { clearToken, getToken } from "../../lib/auth";
 import { OrgSwitcher } from "../../components/org-switcher";
+import { AppBrand } from "../../components/app-brand";
+import { ThemeToggle } from "../../components/theme-toggle";
+import { LogOut, Radar } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -25,28 +28,27 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen font-sans">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <nav className="flex items-center gap-4">
-          <Link href="/orgs" className="text-lg font-bold">
-            Reforge
-          </Link>
-          <Link href="/orgs" className="text-sm text-gray-600 hover:underline">
-            Organizations
-          </Link>
+    <div className="dashboard-shell">
+      <header className="dashboard-header">
+        <nav className="dashboard-nav">
+          <AppBrand />
+          <Link href="/orgs" className="dashboard-nav-link"><Radar /> Organizations</Link>
         </nav>
-        <button
+        <div className="dashboard-actions">
+          <ThemeToggle />
+          <button
           type="button"
           onClick={logout}
-          className="rounded border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100"
-        >
-          Log out
-        </button>
+          className="logout-button"
+          >
+            <LogOut /> Log out
+          </button>
+        </div>
       </header>
-      <div className="border-b px-6 py-2">
+      <div className="dashboard-context">
         <OrgSwitcher />
       </div>
-      <main className="mx-auto max-w-4xl p-6">{children}</main>
+      <main className="dashboard-main">{children}</main>
     </div>
   );
 }

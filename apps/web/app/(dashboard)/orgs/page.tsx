@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ApiError, api, type Organization } from "../../../lib/api-client";
 import { getToken } from "../../../lib/auth";
+import { Button } from "../../../components/ui/button";
+import { ArrowRight, Building2, Plus } from "lucide-react";
 
 export default function OrgsPage(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -41,42 +43,45 @@ export default function OrgsPage(): React.JSX.Element {
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Organizations</h1>
+    <div className="dashboard-page">
+      <header className="page-intro">
+        <div><p className="page-kicker mono">WORKSPACES / 01</p><h1>Organizations</h1><p>Choose the workspace where your agent investigations live.</p></div>
+        <div className="page-intro-mark"><Building2 /></div>
+      </header>
 
-      {orgsQuery.isPending && <p className="text-gray-600">Loading…</p>}
+      {orgsQuery.isPending && <p className="state-panel">Loading organizations…</p>}
       {orgsQuery.isError && (
-        <p className="text-sm text-red-600">
+        <p className="state-panel state-error" role="alert">
           Failed to load organizations: {orgsQuery.error.message}
         </p>
       )}
       {orgsQuery.data !== undefined && orgsQuery.data.length === 0 && (
-        <p className="text-gray-600">
+        <p className="state-panel state-empty">
           No organizations yet. Create one to get started.
         </p>
       )}
-      <ul className="flex flex-col gap-2">
+      <ul className="resource-list">
         {orgsQuery.data?.map((org) => (
           <li
             key={org.id}
-            className="flex items-center justify-between rounded border px-4 py-3"
+            className="resource-row"
           >
             <div>
-              <p className="font-medium">{org.name}</p>
-              <p className="text-xs text-gray-500">Role: {org.role}</p>
+              <p className="resource-name">{org.name}</p>
+              <p className="resource-meta mono">ROLE / {org.role}</p>
             </div>
             <Link
               href={`/orgs/${org.id}/projects`}
-              className="text-sm underline"
+              className="resource-link"
             >
-              View projects
+              View projects <ArrowRight />
             </Link>
           </li>
         ))}
       </ul>
 
       <form
-        className="flex gap-2"
+        className="create-row"
         onSubmit={(e) => {
           e.preventDefault();
           if (name.trim().length > 0) {
@@ -88,17 +93,17 @@ export default function OrgsPage(): React.JSX.Element {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New organization name"
-          className="flex-1 rounded border border-gray-300 px-3 py-2"
+          className="app-input"
         />
-        <button
+        <Button
           type="submit"
           disabled={createMutation.isPending}
-          className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          className="signal-button"
         >
-          Create
-        </button>
+          <Plus /> {createMutation.isPending ? "Creating…" : "Create organization"}
+        </Button>
       </form>
-      {error !== null && <p className="text-sm text-red-600">{error}</p>}
+      {error !== null && <p className="form-error" role="alert">{error}</p>}
     </div>
   );
 }

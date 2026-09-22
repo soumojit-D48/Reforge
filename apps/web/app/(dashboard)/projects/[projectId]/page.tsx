@@ -9,6 +9,8 @@ import {
   type ApiKeyView,
 } from "../../../../lib/api-client";
 import { getToken } from "../../../../lib/auth";
+import { Button } from "../../../../components/ui/button";
+import { KeyRound, RotateCcw, ShieldX, Terminal } from "lucide-react";
 
 export default function ProjectPage({
   params,
@@ -87,82 +89,88 @@ export default function ProjectPage({
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Project API keys</h1>
+    <div className="dashboard-page">
+      <header className="page-intro">
+        <div><p className="page-kicker mono">PROJECT SETTINGS / API ACCESS</p><h1>Project API keys</h1><p>Use a project-scoped key to send structured traces into this workspace.</p></div>
+        <div className="page-intro-mark"><KeyRound /></div>
+      </header>
+      <div className="page-toolbar">
         <Link
           href={`/projects/${projectId}/runs`}
-          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+          className="signal-button"
         >
-          Open runs
+          <Terminal /> Open runs
         </Link>
       </div>
 
       {freshKey !== null && (
-        <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm">
-          <p className="font-medium">
+        <div className="key-notice">
+          <p className="resource-name">
             New API key (shown once — copy it now):
           </p>
-          <code className="mt-1 block break-all">{freshKey}</code>
+          <code className="key-value">{freshKey}</code>
           <button
             type="button"
             onClick={() => setFreshKey(null)}
-            className="mt-2 text-xs underline"
+            className="text-link-button"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {keysQuery.isPending && <p className="text-gray-600">Loading…</p>}
+      {keysQuery.isPending && <p className="state-panel">Loading API keys…</p>}
       {keysQuery.isError && (
-        <p className="text-sm text-red-600">
+        <p className="state-panel state-error" role="alert">
           Failed to load keys: {keysQuery.error.message}
         </p>
       )}
-      <ul className="flex flex-col gap-2">
+      <ul className="resource-list">
         {keysQuery.data?.map((k) => (
           <li
             key={k.id}
-            className="flex items-center justify-between rounded border px-4 py-3 text-sm"
+            className="resource-row resource-row-key"
           >
             <div>
               <code className="break-all">{k.publicKey}</code>
-              <p className="text-xs text-gray-500">Status: {k.status}</p>
+              <p className="resource-meta mono">STATUS / {k.status}</p>
             </div>
             {k.status === "active" && (
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
                   disabled={rotateMutation.isPending}
                   onClick={() => rotateMutation.mutate(k.id)}
-                  className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:opacity-50"
+                  variant="outline"
+                  size="sm"
                 >
-                  Rotate
-                </button>
-                <button
+                  <RotateCcw /> Rotate
+                </Button>
+                <Button
                   type="button"
                   disabled={revokeMutation.isPending}
                   onClick={() => revokeMutation.mutate(k.id)}
-                  className="rounded border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  variant="outline"
+                  size="sm"
+                  className="danger-button"
                 >
-                  Revoke
-                </button>
+                  <ShieldX /> Revoke
+                </Button>
               </div>
             )}
           </li>
         ))}
       </ul>
 
-      <button
+      <Button
         type="button"
         disabled={generateMutation.isPending}
         onClick={() => generateMutation.mutate()}
-        className="w-fit rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+        className="signal-button"
       >
-        Generate new key
-      </button>
-      {error !== null && <p className="text-sm text-red-600">{error}</p>}
+        <KeyRound /> {generateMutation.isPending ? "Generating…" : "Generate new key"}
+      </Button>
+      {error !== null && <p className="form-error" role="alert">{error}</p>}
     </div>
   );
 }

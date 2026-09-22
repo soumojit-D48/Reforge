@@ -8,6 +8,8 @@ import {
   useTrace,
 } from '../../../../../../hooks/use-trace-query';
 import type { FailureCategory } from '../../../../../../lib/api-client';
+import { Button } from '../../../../../../components/ui/button';
+import { ArrowLeft, Check, CircleAlert, Clock3, DollarSign, GitBranch, Save } from 'lucide-react';
 
 const FAILURE_CATEGORIES: { value: FailureCategory; label: string }[] = [
   { value: 'bad_retrieval', label: 'Bad retrieval' },
@@ -38,13 +40,13 @@ export default function TracePage({
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
 
   if (trace.isPending) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">Loading trace...</p>;
+    return <p className="state-panel trace-state">Loading trace...</p>;
   }
   if (trace.isError) {
-    return <p className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">Could not load trace: {trace.error.message}</p>;
+    return <p className="state-panel state-error trace-state" role="alert">Could not load trace: {trace.error.message}</p>;
   }
   if (trace.data === undefined) {
-    return <p className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">Trace data was empty.</p>;
+    return <p className="state-panel state-error trace-state" role="alert">Trace data was empty.</p>;
   }
 
   const item = trace.data;
@@ -70,48 +72,43 @@ export default function TracePage({
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <Link href={`/projects/${projectId}/runs`} className="text-sm font-semibold text-violet-700 hover:underline">&larr; Back to runs</Link>
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="dashboard-page trace-page">
+      <Link href={`/projects/${projectId}/runs`} className="back-link"><ArrowLeft /> Back to runs</Link>
+      <header className="page-intro page-intro-wide">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-violet-600">Trace detail</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">{item.name}</h1>
-          <p className="mt-2 text-sm text-slate-500">{new Date(item.startedAt).toLocaleString()} · {item.environment ?? 'unknown environment'}</p>
+          <p className="page-kicker mono">TRACE DETAIL / {item.id.slice(0, 8)}</p>
+          <h1>{item.name}</h1>
+          <p>{new Date(item.startedAt).toLocaleString()} · {item.environment ?? 'unknown environment'}</p>
         </div>
-        <span className="rounded-full bg-slate-950 px-3 py-1.5 text-sm font-semibold text-white">{item.status}</span>
+        <span className={`run-status run-status-${item.status}`}>{item.status.replace('_', ' ')}</span>
       </header>
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wide text-slate-500">Duration</p><p className="mt-1 text-xl font-semibold">{item.totalDurationMs === null ? 'In progress' : `${item.totalDurationMs} ms`}</p></div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wide text-slate-500">Estimated cost</p><p className="mt-1 text-xl font-semibold">{item.totalCost === null ? '—' : `$${item.totalCost}`}</p></div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wide text-slate-500">Failure tags</p><p className="mt-1 text-xl font-semibold">{item.failureTags.length}</p></div>
+      <section className="metric-grid">
+        <div className="metric-card"><Clock3 /><p className="mono">DURATION</p><strong>{item.totalDurationMs === null ? 'In progress' : `${item.totalDurationMs} ms`}</strong></div>
+        <div className="metric-card"><DollarSign /><p className="mono">ESTIMATED COST</p><strong>{item.totalCost === null ? '—' : `$${item.totalCost}`}</strong></div>
+        <div className="metric-card"><CircleAlert /><p className="mono">FAILURE TAGS</p><strong>{item.failureTags.length}</strong></div>
       </section>
-      <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-semibold text-slate-950">Trace input</h2>
-            <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 text-xs text-slate-700">{JSON.stringify(item.input, null, 2)}</pre>
+      <section className="trace-layout">
+        <div className="trace-sidebar">
+          <div className="surface-panel">
+            <h2>Trace input</h2>
+            <pre className="json-block">{JSON.stringify(item.input, null, 2)}</pre>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold text-slate-950">Failure categories</h2>
-              <span className="text-xs text-slate-500">AI suggestions and human overrides</span>
-            </div>
-            {item.failureTags.length === 0 ? <p className="mt-3 text-sm text-slate-500">No failure categories recorded.</p> : <div className="mt-3 flex flex-col gap-3">{item.failureTags.map((tag) => <div key={tag.id} className={`rounded-lg border p-3 ${tag.source === 'human' ? 'border-violet-200 bg-violet-50' : 'border-red-200 bg-red-50'}`}><div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-slate-900">{categoryLabel(tag.category)}</span><span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600">{tag.source}</span></div>{tag.note === null ? null : <p className="mt-2 text-sm text-slate-700">{tag.note}</p>}<div className="mt-2 flex items-center justify-between text-xs text-slate-500"><span>{tag.confidence === null ? '' : `${Math.round(tag.confidence * 100)}% confidence`}</span>{tag.source === 'human' ? <button type="button" className="font-semibold text-violet-700 hover:underline" onClick={() => editTag(tag)}>Edit</button> : null}</div></div>)}</div>}
+          <div className="surface-panel">
+            <div className="panel-heading"><h2>Failure categories</h2><span className="mono">AI + HUMAN</span></div>
+            {item.failureTags.length === 0 ? <p className="muted-copy">No failure categories recorded.</p> : <div className="tag-list">{item.failureTags.map((tag) => <div key={tag.id} className={`tag-card tag-${tag.source}`}><div className="tag-heading"><span>{categoryLabel(tag.category)}</span><b className="mono">{tag.source}</b></div>{tag.note === null ? null : <p>{tag.note}</p>}<div className="tag-meta"><span>{tag.confidence === null ? '' : `${Math.round(tag.confidence * 100)}% confidence`}</span>{tag.source === 'human' ? <button type="button" className="text-link-button" onClick={() => editTag(tag)}>Edit</button> : null}</div></div>)}</div>}
           </div>
-          <form onSubmit={submitTag} className="rounded-2xl border border-violet-200 bg-violet-50 p-5">
-            <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-slate-950">{editingTagId === null ? 'Add human tag' : 'Edit human tag'}</h2>{editingTagId === null ? null : <button type="button" className="text-xs font-semibold text-slate-600 hover:underline" onClick={() => { setEditingTagId(null); setCategory('unknown'); setNote(''); }}>Cancel</button>}</div>
-            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="failure-category">Category</label>
-            <select id="failure-category" value={category} onChange={(event) => setCategory(event.target.value as FailureCategory)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+          <form onSubmit={submitTag} className="surface-panel tag-form">
+            <div className="panel-heading"><h2>{editingTagId === null ? 'Add human tag' : 'Edit human tag'}</h2>{editingTagId === null ? null : <button type="button" className="text-link-button" onClick={() => { setEditingTagId(null); setCategory('unknown'); setNote(''); }}>Cancel</button>}</div>
+            <label className="form-field" htmlFor="failure-category">Category<select id="failure-category" value={category} onChange={(event) => setCategory(event.target.value as FailureCategory)} className="app-select">
               {FAILURE_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="failure-note">Note</label>
-            <textarea id="failure-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" placeholder="What caused this failure?" />
-            {tagMutation.isError ? <p className="mt-2 text-sm text-red-700">Could not save tag: {tagMutation.error.message}</p> : null}
-            {tagMutation.isSuccess ? <p className="mt-2 text-sm text-emerald-700">Human tag saved.</p> : null}
-            <button type="submit" disabled={tagMutation.isPending} className="mt-3 rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60">{tagMutation.isPending ? 'Saving...' : editingTagId === null ? 'Save human tag' : 'Update human tag'}</button>
+            </select></label>
+            <label className="form-field" htmlFor="failure-note">Note<textarea id="failure-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} className="app-input" placeholder="What caused this failure?" /></label>
+            {tagMutation.isError ? <p className="form-error" role="alert">Could not save tag: {tagMutation.error.message}</p> : null}
+            {tagMutation.isSuccess ? <p className="form-success"><Check /> Human tag saved.</p> : null}
+            <Button type="submit" disabled={tagMutation.isPending} className="signal-button"><Save /> {tagMutation.isPending ? 'Saving...' : editingTagId === null ? 'Save human tag' : 'Update human tag'}</Button>
           </form>
         </div>
-        <div><h2 className="mb-4 text-xl font-semibold text-slate-950">Execution timeline</h2><TraceTimeline spans={item.spans} /></div>
+        <div className="timeline-panel"><div className="panel-heading"><h2>Execution timeline</h2><span className="mono"><GitBranch /> {item.spans.length} SPANS</span></div><TraceTimeline spans={item.spans} /></div>
       </section>
     </div>
   );

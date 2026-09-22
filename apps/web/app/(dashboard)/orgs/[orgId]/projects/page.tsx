@@ -5,6 +5,8 @@ import Link from "next/link";
 import { use, useState } from "react";
 import { ApiError, api, type Project } from "../../../../../lib/api-client";
 import { getToken } from "../../../../../lib/auth";
+import { Button } from "../../../../../components/ui/button";
+import { ArrowLeft, ArrowRight, FolderKanban, Plus } from "lucide-react";
 
 export default function OrgProjectsPage({
   params,
@@ -50,50 +52,52 @@ export default function OrgProjectsPage({
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link href="/orgs" className="text-sm text-gray-600 hover:underline">
-        ← All organizations
+    <div className="dashboard-page">
+      <Link href="/orgs" className="back-link"><ArrowLeft /> All organizations
       </Link>
-      <h1 className="text-2xl font-bold">Projects</h1>
+      <header className="page-intro">
+        <div><p className="page-kicker mono">PROJECTS / 02</p><h1>Projects</h1><p>Each project owns its trace stream, API keys, and investigation history.</p></div>
+        <div className="page-intro-mark"><FolderKanban /></div>
+      </header>
 
-      {projectsQuery.isPending && <p className="text-gray-600">Loading…</p>}
+      {projectsQuery.isPending && <p className="state-panel">Loading projects…</p>}
       {projectsQuery.isError && (
-        <p className="text-sm text-red-600">
+        <p className="state-panel state-error" role="alert">
           Failed to load projects: {projectsQuery.error.message}
         </p>
       )}
       {projectsQuery.data !== undefined && projectsQuery.data.length === 0 && (
-        <p className="text-gray-600">
+        <p className="state-panel state-empty">
           No projects yet. Create one to get started.
         </p>
       )}
-      <ul className="flex flex-col gap-2">
+      <ul className="resource-list">
         {projectsQuery.data?.map((project) => (
           <li
             key={project.id}
-            className="flex items-center justify-between rounded border px-4 py-3"
+            className="resource-row"
           >
-            <p className="font-medium">{project.name}</p>
+            <p className="resource-name">{project.name}</p>
             <Link
               href={`/projects/${project.id}`}
-              className="text-sm underline"
+              className="resource-link"
             >
-              Open
+              Open <ArrowRight />
             </Link>
           </li>
         ))}
       </ul>
 
       {newKey !== null && (
-        <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm">
-          <p className="font-medium">
+        <div className="key-notice">
+          <p className="resource-name">
             New API key (shown once — copy it now):
           </p>
-          <code className="mt-1 block break-all">{newKey}</code>
+          <code className="key-value">{newKey}</code>
           <button
             type="button"
             onClick={() => setNewKey(null)}
-            className="mt-2 text-xs underline"
+            className="text-link-button"
           >
             Dismiss
           </button>
@@ -101,7 +105,7 @@ export default function OrgProjectsPage({
       )}
 
       <form
-        className="flex gap-2"
+        className="create-row"
         onSubmit={(e) => {
           e.preventDefault();
           if (name.trim().length > 0) {
@@ -113,17 +117,17 @@ export default function OrgProjectsPage({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New project name"
-          className="flex-1 rounded border border-gray-300 px-3 py-2"
+          className="app-input"
         />
-        <button
+        <Button
           type="submit"
           disabled={createMutation.isPending}
-          className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          className="signal-button"
         >
-          Create
-        </button>
+          <Plus /> {createMutation.isPending ? "Creating…" : "Create project"}
+        </Button>
       </form>
-      {error !== null && <p className="text-sm text-red-600">{error}</p>}
+      {error !== null && <p className="form-error" role="alert">{error}</p>}
     </div>
   );
 }

@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import Link from "next/link";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { AppBrand } from "../../../components/app-brand";
+import { Button } from "../../../components/ui/button";
 import { ApiError, api } from "../../../lib/api-client";
 import { setToken } from "../../../lib/auth";
 
@@ -43,50 +47,68 @@ export default function RegisterPage(): React.JSX.Element {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-8 font-sans">
-      <h1 className="text-2xl font-bold">Create your Reforge account</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
+    <main className="auth-page">
+      <div className="auth-grid">
+        <section className="auth-panel auth-form-panel">
+          <AppBrand href="/" />
+          <div className="auth-kicker mono">NEW WORKSPACE / 01</div>
+          <h1>Make failures useful.</h1>
+          <p className="auth-lede">Create a workspace for tracing, replaying, and permanently testing your agent’s hardest failures.</p>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+        <label className="form-field">
           Name
           <input
             type="text"
             {...register("name")}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="app-input"
+            autoComplete="name"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="form-field">
           Email
           <input
             type="email"
             {...register("email")}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="app-input"
+            autoComplete="email"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="form-field">
           Password
           <input
             type="password"
             {...register("password")}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="app-input"
+            autoComplete="new-password"
           />
         </label>
         {serverError !== null && (
-          <p className="text-sm text-red-600">{serverError}</p>
+          <p className="form-error" role="alert">{serverError}</p>
         )}
-        <button
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          className="form-submit"
         >
-          {isSubmitting ? "Creating account…" : "Register"}
-        </button>
+          {isSubmitting ? "Creating workspace…" : "Create workspace"} <ArrowRight />
+        </Button>
       </form>
-      <p className="mt-4 text-sm text-gray-600">
-        Already have an account?{" "}
-        <a href="/login" className="underline">
-          Log in
-        </a>
-      </p>
+      <p className="auth-switch">Already have an account? <Link href="/login">Log in <ArrowRight /></Link></p>
+        </section>
+        <aside className="auth-panel auth-story-panel auth-story-green">
+          <div className="auth-story-grid" aria-hidden="true" />
+          <div className="auth-story-content">
+            <div className="auth-story-icon"><Sparkles /></div>
+            <p className="auth-kicker mono">THE CORE LOOP</p>
+            <h2>Find it. Replay it. Lock it.</h2>
+            <ul className="auth-benefits">
+              <li><Check /> Inspect nested execution evidence</li>
+              <li><Check /> Change exactly one variable</li>
+              <li><Check /> Turn the fix into regression coverage</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import Link from "next/link";
+import { ArrowRight, LockKeyhole, ScanSearch } from "lucide-react";
+import { AppBrand } from "../../../components/app-brand";
+import { Button } from "../../../components/ui/button";
 import { ApiError, api } from "../../../lib/api-client";
 import { setToken } from "../../../lib/auth";
 
@@ -42,42 +46,56 @@ export default function LoginPage(): React.JSX.Element {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-8 font-sans">
-      <h1 className="text-2xl font-bold">Log in to Reforge</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
+    <main className="auth-page">
+      <div className="auth-grid">
+        <section className="auth-panel auth-form-panel">
+          <AppBrand href="/" />
+          <div className="auth-kicker mono">SECURE ACCESS / 01</div>
+          <h1>Return to the evidence.</h1>
+          <p className="auth-lede">Open your investigation workspace and continue from the last failed run.</p>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+        <label className="form-field">
           Email
           <input
             type="email"
             {...register("email")}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="app-input"
+            autoComplete="email"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="form-field">
           Password
           <input
             type="password"
             {...register("password")}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="app-input"
+            autoComplete="current-password"
           />
         </label>
         {serverError !== null && (
-          <p className="text-sm text-red-600">{serverError}</p>
+          <p className="form-error" role="alert">{serverError}</p>
         )}
-        <button
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          className="form-submit"
         >
-          {isSubmitting ? "Logging in…" : "Log in"}
-        </button>
+          {isSubmitting ? "Checking credentials…" : "Log in"} <ArrowRight />
+        </Button>
       </form>
-      <p className="mt-4 text-sm text-gray-600">
-        No account?{" "}
-        <a href="/register" className="underline">
-          Register
-        </a>
-      </p>
+      <p className="auth-switch">No account? <Link href="/register">Create one <ArrowRight /></Link></p>
+        </section>
+        <aside className="auth-panel auth-story-panel">
+          <div className="auth-story-grid" aria-hidden="true" />
+          <div className="auth-story-content">
+            <div className="auth-story-icon"><ScanSearch /></div>
+            <p className="auth-kicker mono">REFORGE / INVESTIGATION WORKSPACE</p>
+            <h2>See the step that broke.</h2>
+            <p>Trace every retrieval, model decision, and tool call. Then replay one controlled change instead of guessing.</p>
+            <div className="auth-story-note mono"><LockKeyhole /> Your workspace is project-scoped by design.</div>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }
