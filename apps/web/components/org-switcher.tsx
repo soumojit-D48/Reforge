@@ -30,8 +30,8 @@ export function OrgSwitcher(): React.JSX.Element | null {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-600">
-      Org
+    <label className="org-switcher">
+      <span className="mono">ACTIVE ORG</span>
       <select
         aria-label="Switch organization"
         value={currentOrgId}
@@ -40,7 +40,7 @@ export function OrgSwitcher(): React.JSX.Element | null {
             router.push(`/orgs/${e.target.value}/projects`);
           }
         }}
-        className="rounded border border-gray-300 px-2 py-1 text-sm"
+        className="app-select"
       >
         <option value="">Select…</option>
         {orgsQuery.data.map((org) => (
