@@ -104,6 +104,30 @@ export type ReplayField =
   | 'temperature';
 export type ReplayResolutionValue = 'changed' | 'reused' | 'mocked' | 'fresh';
 export type ReplayOutcome = 'fixed' | 'partially_fixed' | 'not_fixed' | 'new_failure';
+export type EvaluatorType = 'exact_match' | 'rule_based_rubric' | 'llm_judge';
+export type EvaluationStatus = 'pending' | 'completed' | 'failed';
+export type EvaluationTargetType = 'trace' | 'replay';
+export interface Evaluation {
+  id: string;
+  targetType: EvaluationTargetType;
+  traceId: string | null;
+  replayId: string | null;
+  evaluatorType: EvaluatorType;
+  evaluatorVersion: string | null;
+  rubricVersion: string | null;
+  config: unknown;
+  input: unknown;
+  output: unknown;
+  score: number | null;
+  confidence: number | null;
+  reason: string | null;
+  status: EvaluationStatus;
+  humanOverrideScore: number | null;
+  humanOverrideReason: string | null;
+  humanOverrideByUserId: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
 export type ReplayResolution = {
   prompt: ReplayResolutionValue;
   tool_arguments: ReplayResolutionValue;
@@ -363,4 +387,18 @@ export const api = {
       body: { outcome },
       token,
     }),
+
+  createEvaluation: (
+    token: string,
+    input: { targetType: EvaluationTargetType; targetId: string; evaluatorType: EvaluatorType; config: Record<string, unknown> },
+  ) => request<Evaluation>('/evaluations', { method: 'POST', body: input, token }),
+
+  listEvaluations: (token: string, targetType: EvaluationTargetType, targetId: string) =>
+    request<Evaluation[]>(`/evaluations?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`, { token }),
+
+  getEvaluation: (token: string, evaluationId: string) =>
+    request<Evaluation>(`/evaluations/${evaluationId}`, { token }),
+
+  overrideEvaluation: (token: string, evaluationId: string, input: { score: number; reason: string }) =>
+    request<Evaluation>(`/evaluations/${evaluationId}/override`, { method: 'PATCH', body: input, token }),
 };
