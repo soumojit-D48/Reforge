@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { TraceTimeline } from '../../../../../../components/timeline/TraceTimeline';
+import { EvaluationPanel } from '../../../../../../components/evaluations/EvaluationPanel';
 import {
   useFailureTagMutation,
   useTrace,
@@ -149,6 +150,7 @@ export default function TracePage({
         {replayStatus.data !== undefined ? <div className={`replay-live-status replay-live-${replayStatus.data.status}`}><span><b>Replay {replayStatus.data.status}</b>{replayStatus.data.status === 'queued' || replayStatus.data.status === 'running' ? ' — processing in the background...' : null}</span>{replayStatus.data.status === 'completed' ? <Link href={`/projects/${projectId}/replays/${replayStatus.data.id}`} className="text-link-button">Compare replay <ArrowLeft className="rotate-180" /></Link> : null}</div> : null}
         <Button type="button" className="signal-button" disabled={replayMutation.isPending || (replayStatus.data?.status === 'queued' || replayStatus.data?.status === 'running') || changedValue.trim() === ''} onClick={() => replayMutation.mutate({ changedField, changedValue, fieldResolution }, { onSuccess: (replay) => setActiveReplayId(replay.id) })}><Play /> {replayMutation.isPending ? 'Starting replay...' : replayStatus.data?.status === 'completed' ? 'Start another replay' : 'Start replay'}</Button>
       </section>
+      <EvaluationPanel targetType="trace" targetId={traceId} />
       <section className="trace-layout">
         <div className="trace-sidebar">
           <div className="surface-panel">
