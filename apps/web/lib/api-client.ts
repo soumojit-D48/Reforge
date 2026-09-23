@@ -96,6 +96,34 @@ export type FailureCategory =
   | 'evaluator_error'
   | 'unknown';
 
+export type ReplayField =
+  | 'prompt'
+  | 'model'
+  | 'tool_arguments'
+  | 'retrieval_config'
+  | 'temperature';
+export type ReplayResolutionValue = 'changed' | 'reused' | 'mocked' | 'fresh';
+export type ReplayResolution = {
+  prompt: ReplayResolutionValue;
+  tool_arguments: ReplayResolutionValue;
+  retrieval: ReplayResolutionValue;
+  tool_response: ReplayResolutionValue;
+  model: ReplayResolutionValue;
+  temperature: ReplayResolutionValue;
+};
+export interface Replay {
+  id: string;
+  sourceTraceId: string;
+  resultTraceId: string | null;
+  changedField: ReplayField;
+  changedValue: unknown;
+  fieldResolution: ReplayResolution;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  outcome: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export interface TraceListItem {
   id: string;
   name: string;
@@ -108,6 +136,7 @@ export interface TraceListItem {
   createdAt: string;
   models: string[];
   failureCategories: string[];
+  replayStatus: 'queued' | 'running' | 'completed' | 'failed' | null;
 }
 
 export interface TraceListResponse {
@@ -149,6 +178,12 @@ export interface TraceDetail {
   startedAt: string;
   endedAt: string | null;
   createdAt: string;
+  replay: {
+    id: string;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    changedField: ReplayField;
+    fieldResolution: ReplayResolution;
+  } | null;
   failureTags: {
     id: string;
     category: FailureCategory;
@@ -254,4 +289,22 @@ export const api = {
       `/traces/${traceId}/failure-tag/${tagId}`,
       { method: 'PATCH', body: input, token },
     ),
+
+  createReplay: (
+    token: string,
+    traceId: string,
+    input: {
+      changedField: ReplayField;
+      changedValue: unknown;
+      fieldResolution: ReplayResolution;
+    },
+  ) =>
+    request<Replay>(`/traces/${traceId}/replay`, {
+      method: 'POST',
+      body: input,
+      token,
+    }),
+
+  getReplay: (token: string, replayId: string) =>
+    request<Replay>(`/replays/${replayId}`, { token }),
 };
