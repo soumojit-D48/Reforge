@@ -103,6 +103,7 @@ export type ReplayField =
   | 'retrieval_config'
   | 'temperature';
 export type ReplayResolutionValue = 'changed' | 'reused' | 'mocked' | 'fresh';
+export type ReplayOutcome = 'fixed' | 'partially_fixed' | 'not_fixed' | 'new_failure';
 export type ReplayResolution = {
   prompt: ReplayResolutionValue;
   tool_arguments: ReplayResolutionValue;
@@ -119,9 +120,54 @@ export interface Replay {
   changedValue: unknown;
   fieldResolution: ReplayResolution;
   status: 'queued' | 'running' | 'completed' | 'failed';
-  outcome: string | null;
+  outcome: ReplayOutcome | null;
   createdAt: string;
   completedAt: string | null;
+}
+
+export interface ComparisonSpan {
+  id: string;
+  type: string;
+  name: string;
+  model: string | null;
+  input: unknown;
+  output: unknown;
+  arguments: unknown;
+  result: unknown;
+  error: unknown;
+  tokenUsage: unknown;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number | null;
+}
+
+export interface TraceComparison {
+  id: string;
+  name: string;
+  status: TraceStatus;
+  finalOutput: unknown;
+  selectedTool: unknown;
+  toolArguments: unknown;
+  retrievalDocuments: unknown;
+  tokenUsage: unknown[];
+  cost: string | null;
+  latencyMs: number | null;
+  errors: unknown[];
+  spans: ComparisonSpan[];
+}
+
+export interface ReplayComparison {
+  replay: {
+    id: string;
+    sourceTraceId: string;
+    resultTraceId: string;
+    status: Replay['status'];
+    outcome: ReplayOutcome | null;
+    changedField: ReplayField;
+    fieldResolution: ReplayResolution;
+  };
+  original: TraceComparison;
+  result: TraceComparison;
 }
 
 export interface TraceListItem {
@@ -307,4 +353,14 @@ export const api = {
 
   getReplay: (token: string, replayId: string) =>
     request<Replay>(`/replays/${replayId}`, { token }),
+
+  getReplayComparison: (token: string, replayId: string) =>
+    request<ReplayComparison>(`/replays/${replayId}/compare`, { token }),
+
+  updateReplayOutcome: (token: string, replayId: string, outcome: ReplayOutcome) =>
+    request<Replay>(`/replays/${replayId}/outcome`, {
+      method: 'PATCH',
+      body: { outcome },
+      token,
+    }),
 };
