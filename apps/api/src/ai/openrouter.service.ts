@@ -33,6 +33,21 @@ export interface ReplayLlmResult {
   rawResponse: unknown;
 }
 
+export interface JudgeInput {
+  model?: string;
+  input: unknown;
+  output: unknown;
+  criteria: unknown[];
+}
+
+export interface JudgeResult {
+  score: number;
+  confidence: number;
+  reason: string;
+  model: string;
+  rawResponse: unknown;
+}
+
 export class OpenRouterError extends Error {
   constructor(message: string) {
     super(message);
@@ -156,6 +171,46 @@ export class OpenRouterService {
     return { output, model: input.model, rawResponse: parsed };
   }
 
+  async judge(input: JudgeInput): Promise<JudgeResult> {
+    const key = this.apiKey();
+    if (key === null) {
+      throw new OpenRouterError('OPENROUTER_API_KEY is not configured');
+    }
+    const model = input.model ?? this.config.get<string>('OPENROUTER_JUDGE_MODEL') ?? DEFAULT_CLASSIFY_MODEL;
+    let response: Response;
+    try {
+      response = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You judge an AI-agent output against weighted criteria. Reply with JSON only: {"score": <0..1>, "confidence": <0..1>, "reason": "..."}.',
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({ input: input.input, output: input.output, criteria: input.criteria }),
+            },
+          ],
+        }),
+      });
+    } catch (err) {
+      throw new OpenRouterError(`OpenRouter judge request failed: ${(err as Error).message}`);
+    }
+    if (!response.ok) {
+      throw new OpenRouterError(`OpenRouter judge responded ${response.status}: ${await response.text()}`);
+    }
+    const parsed = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+    const content = parsed.choices?.[0]?.message?.content ?? '';
+    const result = this.parseJudge(content);
+    return { ...result, model, rawResponse: parsed };
+  }
+
   private parseClassification(
     content: string,
   ): Pick<FailureClassification, 'category' | 'confidence'> {
@@ -187,6 +242,28 @@ export class OpenRouterService {
     return {
       category: record['category'] as FailureCategory,
       confidence: Math.min(1, Math.max(0, confidence)),
+    };
+  }
+
+  private parseJudge(content: string): Pick<JudgeResult, 'score' | 'confidence' | 'reason'> {
+    const start = content.indexOf('{');
+    const end = content.lastIndexOf('}');
+    if (start < 0 || end <= start) throw new OpenRouterError('OpenRouter judge returned non-JSON content');
+    let decoded: unknown;
+    try {
+      decoded = JSON.parse(content.slice(start, end + 1)) as unknown;
+    } catch {
+      throw new OpenRouterError('OpenRouter judge returned malformed JSON');
+    }
+    if (decoded === null || typeof decoded !== 'object') throw new OpenRouterError('OpenRouter judge returned a non-object payload');
+    const record = decoded as Record<string, unknown>;
+    if (typeof record.score !== 'number' || !Number.isFinite(record.score) || typeof record.confidence !== 'number' || !Number.isFinite(record.confidence) || typeof record.reason !== 'string' || record.reason.trim() === '') {
+      throw new OpenRouterError('OpenRouter judge returned invalid score, confidence, or reason');
+    }
+    return {
+      score: Math.min(1, Math.max(0, record.score)),
+      confidence: Math.min(1, Math.max(0, record.confidence)),
+      reason: record.reason,
     };
   }
 }

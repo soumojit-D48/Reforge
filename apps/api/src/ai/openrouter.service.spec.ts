@@ -107,3 +107,18 @@ describe('OpenRouterService.classifyFailure', () => {
     );
   });
 });
+
+describe('OpenRouterService.judge', () => {
+  it('parses score, confidence, and reason', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ choices: [{ message: { content: '{"score":0.75,"confidence":0.88,"reason":"Good answer"}' } }] })));
+    const result = await serviceWith({ OPENROUTER_API_KEY: 'test-key' }).judge({ input: 'question', output: 'answer', criteria: [{ name: 'correctness', description: 'Correct' }] });
+    expect(result.score).toBe(0.75);
+    expect(result.confidence).toBe(0.88);
+    expect(result.reason).toBe('Good answer');
+  });
+
+  it('rejects malformed judge output', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ choices: [{ message: { content: '{"score":"bad"}' } }] })));
+    await expect(serviceWith({ OPENROUTER_API_KEY: 'test-key' }).judge({ input: null, output: null, criteria: [] })).rejects.toBeInstanceOf(OpenRouterError);
+  });
+});
