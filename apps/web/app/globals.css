@@ -2354,6 +2354,18 @@ textarea.app-input {
 .outcome-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 .outcome-button { padding: 8px 10px; border: 1px solid var(--color-border); background: transparent; color: var(--color-muted-foreground); font-family: var(--font-mono); font-size: .58rem; text-transform: capitalize; cursor: pointer; }
 .outcome-button:hover, .outcome-selected { border-color: var(--color-signal); color: var(--color-signal); }
+.evaluation-panel { display: grid; gap: 14px; background: color-mix(in oklab, var(--color-signal) 4%, var(--color-card)); }
+.evaluation-form-grid { display: grid; grid-template-columns: .7fr 1.3fr; gap: 10px; }
+.evaluation-config { min-height: 80px; font-family: var(--font-mono); font-size: .66rem; }
+.evaluation-result { display: flex; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid var(--color-border); }
+.evaluation-result p { margin: 8px 0 0; color: var(--color-muted-foreground); font-size: .7rem; }
+.evaluation-result strong, .evaluation-result span { display: block; }
+.evaluation-result strong { margin-top: 5px; font-size: 1.1rem; }
+.evaluation-result span { margin-top: 4px; color: var(--color-muted-foreground); font-size: .65rem; }
+.evaluation-result-completed { border-color: color-mix(in oklab, var(--color-fixed) 50%, var(--color-border)); }
+.evaluation-result-failed { border-color: color-mix(in oklab, var(--color-failure) 50%, var(--color-border)); }
+.evaluation-override { display: grid; min-width: min(360px, 45%); gap: 7px; align-content: center; }
+.evaluation-override small { display: block; margin-top: 4px; color: var(--color-fixed); font-size: .62rem; }
 .tag-form .form-field { margin-top: 14px; }
 .timeline-panel { min-width: 0; padding: 18px; border: 1px solid var(--color-border); background: var(--color-card); }
 .timeline-panel > .trace-timeline { margin-top: 20px; }
@@ -2397,6 +2409,9 @@ textarea.app-input {
   .compare-headings, .compare-grid, .span-compare-row { grid-template-columns: 1fr; }
   .compare-outcome { align-items: flex-start; flex-direction: column; }
   .outcome-actions { justify-content: flex-start; }
+  .evaluation-form-grid { grid-template-columns: 1fr; }
+  .evaluation-result { flex-direction: column; }
+  .evaluation-override { min-width: 0; }
   .span-details { grid-template-columns: 1fr; }
 }
 
