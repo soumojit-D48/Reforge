@@ -3,6 +3,7 @@ import {
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
@@ -19,7 +20,7 @@ const resolution = {
   temperature: 'reused',
 };
 
-describe('M5 — replay engine (e2e)', () => {
+describe('M5/M6 — replay and compare (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let http: ReturnType<typeof request>;
@@ -59,6 +60,8 @@ describe('M5 — replay engine (e2e)', () => {
         projectId,
         name,
         status: 'failed',
+        totalDurationMs: 1000,
+        totalCost: new Prisma.Decimal('0.10'),
         startedAt: new Date('2026-09-16T10:00:00.000Z'),
         endedAt: new Date('2026-09-16T10:00:01.000Z'),
         spans: {
@@ -138,5 +141,78 @@ describe('M5 — replay engine (e2e)', () => {
       where: { metadata: { path: ['replayId'], equals: created.body.id as string } },
     });
     expect(orphan).toBeNull();
+  });
+
+  it('compares a completed replay and persists its outcome', async () => {
+    const sourceId = await createTrace('compare-source', true);
+    const result = await prisma.trace.create({
+      data: {
+        projectId,
+        name: 'compare-source [replay 1]',
+        status: 'success',
+        totalDurationMs: 700,
+        totalCost: new Prisma.Decimal('0.02'),
+        startedAt: new Date('2026-09-16T10:01:00.000Z'),
+        endedAt: new Date('2026-09-16T10:01:00.700Z'),
+        spans: {
+          create: [{
+            type: 'llm_call',
+            name: 'planner',
+            model: 'openai/gpt-4o-mini',
+            output: { tool_selected: 'getOrderStatus' },
+            tokenUsage: { prompt: 8, completion: 4 },
+            startedAt: new Date('2026-09-16T10:01:00.100Z'),
+            endedAt: new Date('2026-09-16T10:01:00.600Z'),
+          }],
+        },
+      },
+    });
+    const replay = await prisma.replay.create({
+      data: {
+        sourceTraceId: sourceId,
+        resultTraceId: result.id,
+        changedField: 'model',
+        changedValue: 'openai/gpt-4o-mini',
+        fieldResolution: resolution,
+        status: 'completed',
+      },
+    });
+
+    const comparison = await http
+      .get(`/v1/replays/${replay.id}/compare`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(comparison.body.original.id).toBe(sourceId);
+    expect(comparison.body.result.id).toBe(result.id);
+    expect(comparison.body.original.latencyMs).toBe(1000);
+    expect(comparison.body.result.cost).toBe('0.02');
+    expect(comparison.body.replay.fieldResolution.model).toBe('changed');
+
+    await http
+      .patch(`/v1/replays/${replay.id}/outcome`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ outcome: 'fixed' })
+      .expect(200);
+    const reloaded = await http
+      .get(`/v1/replays/${replay.id}/compare`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(reloaded.body.replay.outcome).toBe('fixed');
+  });
+
+  it('does not compare a replay before it has a result trace', async () => {
+    const sourceId = await createTrace('compare-pending', true);
+    const replay = await prisma.replay.create({
+      data: {
+        sourceTraceId: sourceId,
+        changedField: 'model',
+        changedValue: 'openai/gpt-4o-mini',
+        fieldResolution: resolution,
+      },
+    });
+    await http
+      .get(`/v1/replays/${replay.id}/compare`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(409);
   });
 });
