@@ -40,6 +40,8 @@ export class ProjectAccessGuard implements CanActivate {
     }
 
     const params = request.params as Record<string, string | undefined>;
+    const body = request.body as Record<string, unknown> | undefined;
+    const query = request.query as Record<string, unknown>;
     const orgId = params['orgId'];
     const projectId = params['projectId'];
 
@@ -123,6 +125,39 @@ export class ProjectAccessGuard implements CanActivate {
       if (membership === null) {
         throw new ForbiddenException('No access to this replay');
       }
+      this.assertRole(membership.role, allowedRoles);
+      return true;
+    }
+
+    const evaluationId = params['evaluationId'];
+    if (evaluationId !== undefined) {
+      const evaluation = await this.prisma.evaluation.findUnique({
+        where: { id: evaluationId },
+        select: {
+          trace: { select: { project: { select: { organizationId: true } } } },
+          replay: { select: { sourceTrace: { select: { project: { select: { organizationId: true } } } } } },
+        },
+      });
+      const organizationId = evaluation?.trace?.project.organizationId
+        ?? evaluation?.replay?.sourceTrace.project.organizationId;
+      if (organizationId === undefined) throw new ForbiddenException('No access to this evaluation');
+      const membership = await this.prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId: user.userId } } });
+      if (membership === null) throw new ForbiddenException('No access to this evaluation');
+      this.assertRole(membership.role, allowedRoles);
+      return true;
+    }
+
+    const targetId = typeof body?.targetId === 'string'
+      ? body.targetId
+      : typeof query.targetId === 'string' ? query.targetId : undefined;
+    const targetType = body?.targetType ?? query.targetType;
+    if (targetId !== undefined && (targetType === 'trace' || targetType === 'replay')) {
+      const organizationId = targetType === 'trace'
+        ? (await this.prisma.trace.findUnique({ where: { id: targetId }, select: { project: { select: { organizationId: true } } } }))?.project.organizationId
+        : (await this.prisma.replay.findUnique({ where: { id: targetId }, select: { sourceTrace: { select: { project: { select: { organizationId: true } } } } } }))?.sourceTrace.project.organizationId;
+      if (organizationId === undefined) throw new ForbiddenException('No access to this evaluation target');
+      const membership = await this.prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId: user.userId } } });
+      if (membership === null) throw new ForbiddenException('No access to this evaluation target');
       this.assertRole(membership.role, allowedRoles);
       return true;
     }

@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { AiModule } from './ai/ai.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { IngestionModule } from './ingestion/ingestion.module.js';
+import { EvaluationsModule } from './evaluations/evaluations.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
@@ -37,6 +38,7 @@ import { TracesModule } from './traces/traces.module.js';
     AiModule,
     AuthModule,
     IngestionModule,
+    EvaluationsModule,
     OrganizationsModule,
     ProjectsModule,
     ReplayModule,
