@@ -22,6 +22,7 @@ export interface TraceListItem {
   createdAt: string;
   models: string[];
   failureCategories: string[];
+  replayStatus: string | null;
 }
 
 export interface TraceListResponse {
@@ -63,6 +64,12 @@ export interface TraceDetailView {
   startedAt: string;
   endedAt: string | null;
   createdAt: string;
+  replay: {
+    id: string;
+    status: string;
+    changedField: string;
+    fieldResolution: unknown;
+  } | null;
   failureTags: {
     id: string;
     category: string;
@@ -151,6 +158,7 @@ export class TracesService {
           select: { category: true },
           orderBy: { createdAt: 'desc' },
         },
+        replayInto: { select: { status: true } },
       },
     });
     const hasNextPage = traces.length > limit;
@@ -170,6 +178,7 @@ export class TracesService {
         createdAt: trace.createdAt.toISOString(),
         models: [...new Set(trace.spans.flatMap((span) => span.model === null ? [] : [span.model]))],
         failureCategories: [...new Set(trace.failureTags.map((tag) => tag.category))],
+        replayStatus: trace.replayInto?.status ?? null,
       })),
       nextCursor:
         hasNextPage && last !== undefined
@@ -185,6 +194,14 @@ export class TracesService {
       include: {
         spans: { orderBy: [{ startedAt: 'asc' }, { id: 'asc' }] },
         failureTags: { orderBy: { createdAt: 'desc' } },
+        replayInto: {
+          select: {
+            id: true,
+            status: true,
+            changedField: true,
+            fieldResolution: true,
+          },
+        },
       },
     });
     if (trace === null) {
@@ -234,6 +251,7 @@ export class TracesService {
       startedAt: trace.startedAt.toISOString(),
       endedAt: trace.endedAt?.toISOString() ?? null,
       createdAt: trace.createdAt.toISOString(),
+      replay: trace.replayInto,
       failureTags: trace.failureTags.map((tag) => ({
         id: tag.id,
         category: tag.category,

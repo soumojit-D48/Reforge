@@ -61,6 +61,30 @@ export class RedisService implements OnModuleDestroy {
     );
   }
 
+  async acquireReplayLock(
+    traceId: string,
+    owner: string,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    const result = await this.client.set(
+      `replaylock:${traceId}`,
+      owner,
+      'EX',
+      ttlSeconds,
+      'NX',
+    );
+    return result === 'OK';
+  }
+
+  async releaseReplayLock(traceId: string, owner: string): Promise<void> {
+    await this.client.eval(
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      1,
+      `replaylock:${traceId}`,
+      owner,
+    );
+  }
+
   async onModuleDestroy(): Promise<void> {
     try {
       this.client.disconnect();

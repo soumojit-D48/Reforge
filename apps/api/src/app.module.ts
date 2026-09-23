@@ -10,6 +10,7 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { ReplayModule } from './replay/replay.module.js';
 import { TracesModule } from './traces/traces.module.js';
 
 @Module({
@@ -38,6 +39,7 @@ import { TracesModule } from './traces/traces.module.js';
     IngestionModule,
     OrganizationsModule,
     ProjectsModule,
+    ReplayModule,
     TracesModule,
   ],
   controllers: [AppController],

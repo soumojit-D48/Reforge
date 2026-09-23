@@ -21,6 +21,18 @@ export interface ClassifyInput {
   errorExcerpts: string[];
 }
 
+export interface ReplayLlmInput {
+  model: string;
+  prompt: string;
+  temperature?: number;
+}
+
+export interface ReplayLlmResult {
+  output: unknown;
+  model: string;
+  rawResponse: unknown;
+}
+
 export class OpenRouterError extends Error {
   constructor(message: string) {
     super(message);
@@ -101,6 +113,47 @@ export class OpenRouterService {
     const content = parsed.choices?.[0]?.message?.content ?? '';
     const classification = this.parseClassification(content);
     return { ...classification, model, rawResponse: parsed };
+  }
+
+  async replayLlmCall(input: ReplayLlmInput): Promise<ReplayLlmResult> {
+    const key = this.apiKey();
+    if (key === null) {
+      throw new OpenRouterError('OPENROUTER_API_KEY is not configured');
+    }
+    let response: Response;
+    try {
+      response = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model: input.model,
+          messages: [{ role: 'user', content: input.prompt }],
+          ...(input.temperature === undefined
+            ? {}
+            : { temperature: input.temperature }),
+        }),
+      });
+    } catch (err) {
+      throw new OpenRouterError(
+        `OpenRouter replay request failed: ${(err as Error).message}`,
+      );
+    }
+    if (!response.ok) {
+      throw new OpenRouterError(
+        `OpenRouter replay responded ${response.status}: ${await response.text()}`,
+      );
+    }
+    const parsed = (await response.json()) as {
+      choices?: { message?: { content?: unknown } }[];
+    };
+    const output = parsed.choices?.[0]?.message?.content;
+    if (output === undefined) {
+      throw new OpenRouterError('OpenRouter replay returned no output');
+    }
+    return { output, model: input.model, rawResponse: parsed };
   }
 
   private parseClassification(
