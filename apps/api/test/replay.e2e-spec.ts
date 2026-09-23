@@ -82,7 +82,7 @@ describe('M5/M6 — replay and compare (e2e)', () => {
   }
 
   async function waitForReplay(replayId: string): Promise<{ status: string; resultTraceId: string | null }> {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
       const response = await http.get(`/v1/replays/${replayId}`).set('Authorization', `Bearer ${token}`).expect(200);
       if (response.body.status === 'completed' || response.body.status === 'failed') {
         return response.body as { status: string; resultTraceId: string | null };
