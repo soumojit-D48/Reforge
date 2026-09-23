@@ -74,3 +74,4 @@ prisma/*.db-journal
 
 logs/*.jsonl
 *.logs.jsonl
+.next-dev
