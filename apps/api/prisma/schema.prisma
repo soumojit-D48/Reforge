@@ -374,6 +374,11 @@ model TestRunResult {
   evaluationId     String?
   passed           Boolean?
   score            Float?
+  scoreDelta       Float?
+  latencyDeltaMs   Int?
+  costDelta        Decimal? @db.Decimal(10, 6)
+  failureCategories Json?
+  errorReason      String?
   createdAt        DateTime @default(now())
 
   testRun        TestRun        @relation(fields: [testRunId], references: [id], onDelete: Cascade)
