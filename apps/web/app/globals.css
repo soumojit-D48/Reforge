@@ -1991,6 +1991,61 @@
   }
 }
 
+.tests-page {
+  gap: 18px;
+}
+.regression-list {
+  display: grid;
+  gap: 8px;
+}
+.regression-row,
+.run-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--color-border);
+}
+.regression-row p {
+  margin: 4px 0 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+.inline-form {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+}
+.inline-form .app-input,
+.inline-form .app-select {
+  flex: 1;
+}
+.regression-save-form {
+  display: grid;
+  gap: 14px;
+}
+.json-input {
+  min-height: 100px;
+  font-family: var(--font-mono);
+}
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+@media (max-width: 700px) {
+  .inline-form,
+  .regression-row,
+  .run-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* Auth and dashboard surfaces share the landing page's Signal / Trace system. */
 .theme-toggle {
   border: 1px solid var(--color-border);
