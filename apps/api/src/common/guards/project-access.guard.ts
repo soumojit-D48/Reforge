@@ -147,6 +147,42 @@ export class ProjectAccessGuard implements CanActivate {
       return true;
     }
 
+    const regressionTestId = params['testId'] ?? params['regressionTestId'];
+    if (regressionTestId !== undefined) {
+      const test = await this.prisma.regressionTest.findUnique({
+        where: { id: regressionTestId },
+        select: { project: { select: { organizationId: true } } },
+      });
+      const organizationId = test?.project.organizationId;
+      if (organizationId === undefined) throw new ForbiddenException('No access to this regression test');
+      const membership = await this.prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId: user.userId } } });
+      if (membership === null) throw new ForbiddenException('No access to this regression test');
+      this.assertRole(membership.role, allowedRoles);
+      return true;
+    }
+
+    const suiteId = params['suiteId'];
+    if (suiteId !== undefined) {
+      const suite = await this.prisma.testSuite.findUnique({ where: { id: suiteId }, select: { project: { select: { organizationId: true } } } });
+      const organizationId = suite?.project.organizationId;
+      if (organizationId === undefined) throw new ForbiddenException('No access to this test suite');
+      const membership = await this.prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId: user.userId } } });
+      if (membership === null) throw new ForbiddenException('No access to this test suite');
+      this.assertRole(membership.role, allowedRoles);
+      return true;
+    }
+
+    const runId = params['runId'];
+    if (runId !== undefined) {
+      const run = await this.prisma.testRun.findUnique({ where: { id: runId }, select: { testSuite: { select: { project: { select: { organizationId: true } } } } } });
+      const organizationId = run?.testSuite.project.organizationId;
+      if (organizationId === undefined) throw new ForbiddenException('No access to this test run');
+      const membership = await this.prisma.organizationMember.findUnique({ where: { organizationId_userId: { organizationId, userId: user.userId } } });
+      if (membership === null) throw new ForbiddenException('No access to this test run');
+      this.assertRole(membership.role, allowedRoles);
+      return true;
+    }
+
     const targetId = typeof body?.targetId === 'string'
       ? body.targetId
       : typeof query.targetId === 'string' ? query.targetId : undefined;

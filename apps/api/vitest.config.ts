@@ -9,5 +9,9 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    // Some service specs exercise the shared local Postgres/Redis setup;
+    // serial files prevent connection pressure from making the health spec
+    // time out when the full workspace suite runs.
+    fileParallelism: false,
   },
 });
