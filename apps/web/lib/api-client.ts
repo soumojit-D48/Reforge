@@ -128,6 +128,63 @@ export interface Evaluation {
   createdAt: string;
   completedAt: string | null;
 }
+
+export interface RegressionTest {
+  id: string;
+  projectId: string;
+  name: string;
+  input: unknown;
+  expectedBehavior: string;
+  evaluatorType: EvaluatorType;
+  evaluatorConfig: unknown;
+  minScore: number;
+  promptVersion: string | null;
+  model: string | null;
+  environment: string | null;
+  sourceTraceId: string | null;
+  createdAt: string;
+}
+
+export interface TestSuite {
+  id: string;
+  projectId: string;
+  name: string;
+  testCount: number;
+  createdAt: string;
+}
+
+export interface TestSuiteDetail extends TestSuite {
+  tests: RegressionTest[];
+}
+
+export interface TestRunResult {
+  id: string;
+  regressionTestId: string;
+  testName: string;
+  replayId: string | null;
+  evaluationId: string | null;
+  passed: boolean | null;
+  score: number | null;
+  scoreDelta: number | null;
+  latencyDeltaMs: number | null;
+  costDelta: string | null;
+  failureCategories: unknown;
+  errorReason: string | null;
+}
+
+export interface TestRun {
+  id: string;
+  testSuiteId: string;
+  promptVersion: string | null;
+  model: string | null;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  passedCount: number;
+  failedCount: number;
+  skippedCount: number;
+  startedAt: string;
+  completedAt: string | null;
+  results: TestRunResult[];
+}
 export type ReplayResolution = {
   prompt: ReplayResolutionValue;
   tool_arguments: ReplayResolutionValue;
@@ -401,4 +458,55 @@ export const api = {
 
   overrideEvaluation: (token: string, evaluationId: string, input: { score: number; reason: string }) =>
     request<Evaluation>(`/evaluations/${evaluationId}/override`, { method: 'PATCH', body: input, token }),
+
+  listRegressionTests: (token: string, projectId: string) =>
+    request<RegressionTest[]>(`/projects/${projectId}/regression-tests`, { token }),
+
+  createRegressionTest: (token: string, projectId: string, input: {
+    name: string;
+    sourceTraceId: string;
+    expectedBehavior: string;
+    evaluatorType: EvaluatorType;
+    evaluatorConfig: Record<string, unknown>;
+    minScore: number;
+    promptVersion?: string;
+    model?: string;
+    environment?: string;
+  }) => request<RegressionTest>(`/projects/${projectId}/regression-tests`, { method: 'POST', body: input, token }),
+
+  deleteRegressionTest: (token: string, testId: string) =>
+    request<void>(`/regression-tests/${testId}`, { method: 'DELETE', token }),
+
+  updateRegressionTest: (token: string, testId: string, input: Partial<{
+    name: string;
+    sourceTraceId: string;
+    expectedBehavior: string;
+    evaluatorType: EvaluatorType;
+    evaluatorConfig: Record<string, unknown>;
+    minScore: number;
+    promptVersion: string;
+    model: string;
+    environment: string;
+  }>) => request<RegressionTest>(`/regression-tests/${testId}`, { method: 'PATCH', body: input, token }),
+
+  listTestSuites: (token: string, projectId: string) =>
+    request<TestSuite[]>(`/projects/${projectId}/test-suites`, { token }),
+
+  createTestSuite: (token: string, projectId: string, name: string) =>
+    request<TestSuite>(`/projects/${projectId}/test-suites`, { method: 'POST', body: { name }, token }),
+
+  getTestSuite: (token: string, suiteId: string) =>
+    request<TestSuiteDetail>(`/test-suites/${suiteId}`, { token }),
+
+  addSuiteTest: (token: string, suiteId: string, regressionTestId: string) =>
+    request<void>(`/test-suites/${suiteId}/tests`, { method: 'POST', body: { regressionTestId }, token }),
+
+  removeSuiteTest: (token: string, suiteId: string, testId: string) =>
+    request<void>(`/test-suites/${suiteId}/tests/${testId}`, { method: 'DELETE', token }),
+
+  runTestSuite: (token: string, suiteId: string, input: { promptVersion?: string; model?: string }) =>
+    request<TestRun>(`/test-suites/${suiteId}/run`, { method: 'POST', body: input, token }),
+
+  getTestRun: (token: string, runId: string) =>
+    request<TestRun>(`/test-runs/${runId}`, { token }),
 };
