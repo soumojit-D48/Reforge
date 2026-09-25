@@ -95,12 +95,15 @@ export default function ProjectPage({
         <div className="page-intro-mark"><KeyRound /></div>
       </header>
       <div className="page-toolbar">
-        <Link
-          href={`/projects/${projectId}/runs`}
-          className="signal-button"
-        >
-          <Terminal /> Open runs
-        </Link>
+          <Link
+            href={`/projects/${projectId}/runs`}
+            className="signal-button"
+          >
+            <Terminal /> Open runs
+          </Link>
+          <Link href={`/projects/${projectId}/tests`} className="text-link-button">
+            Regression tests
+          </Link>
       </div>
 
       {freshKey !== null && (

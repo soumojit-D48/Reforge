@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { use, useState } from 'react';
 import { TraceTimeline } from '../../../../../../components/timeline/TraceTimeline';
 import { EvaluationPanel } from '../../../../../../components/evaluations/EvaluationPanel';
+import { SaveRegressionTestForm } from '../../../../../../components/regression/SaveRegressionTestForm';
 import {
   useFailureTagMutation,
   useTrace,
@@ -151,6 +152,7 @@ export default function TracePage({
         <Button type="button" className="signal-button" disabled={replayMutation.isPending || (replayStatus.data?.status === 'queued' || replayStatus.data?.status === 'running') || changedValue.trim() === ''} onClick={() => replayMutation.mutate({ changedField, changedValue, fieldResolution }, { onSuccess: (replay) => setActiveReplayId(replay.id) })}><Play /> {replayMutation.isPending ? 'Starting replay...' : replayStatus.data?.status === 'completed' ? 'Start another replay' : 'Start replay'}</Button>
       </section>
       <EvaluationPanel targetType="trace" targetId={traceId} />
+      <SaveRegressionTestForm projectId={projectId} sourceTraceId={traceId} />
       <section className="trace-layout">
         <div className="trace-sidebar">
           <div className="surface-panel">
