@@ -394,17 +394,18 @@ model Annotation {
   targetType   AnnotationTargetType
   traceId      String?
   evaluationId String?
-  reviewerId   String
+  reviewerId   String?
   verdict      AnnotationVerdict
   note         String?
   createdAt    DateTime             @default(now())
 
-  reviewer   User        @relation(fields: [reviewerId], references: [id])
+  reviewer   User?       @relation(fields: [reviewerId], references: [id])
   trace      Trace?      @relation("TraceAnnotations", fields: [traceId], references: [id], onDelete: Cascade)
   evaluation Evaluation? @relation("EvaluationAnnotations", fields: [evaluationId], references: [id], onDelete: Cascade)
 
   @@index([traceId])
   @@index([evaluationId])
+  @@unique([evaluationId])
 }
 
 model File {

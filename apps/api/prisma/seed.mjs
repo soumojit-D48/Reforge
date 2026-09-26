@@ -208,7 +208,56 @@ async function seed() {
       });
     }
   }
+
+  const reviewTrace = await prisma.trace.findUniqueOrThrow({
+    where: {
+      projectId_externalId: {
+        projectId: project.id,
+        externalId: 'm3-success-001',
+      },
+    },
+  });
+  const reviewEvaluation = await prisma.evaluation.upsert({
+    where: { id: 'm9-seed-evaluation' },
+    update: {
+      traceId: reviewTrace.id,
+      confidence: 0.2,
+      score: 0.4,
+      reason: 'Seeded low-confidence evaluation for human review.',
+      status: 'completed',
+      completedAt: new Date(),
+    },
+    create: {
+      id: 'm9-seed-evaluation',
+      targetType: 'trace',
+      traceId: reviewTrace.id,
+      evaluatorType: 'exact_match',
+      evaluatorVersion: 'seed/v1',
+      score: 0.4,
+      confidence: 0.2,
+      reason: 'Seeded low-confidence evaluation for human review.',
+      status: 'completed',
+      input: reviewTrace.input ?? undefined,
+      output: { text: 'Your order is out for delivery.' },
+      completedAt: new Date(),
+    },
+  });
+  await prisma.annotation.upsert({
+    where: { evaluationId: reviewEvaluation.id },
+    update: {
+      targetType: 'evaluation',
+      reviewerId: null,
+      verdict: 'needs_review',
+      note: null,
+    },
+    create: {
+      targetType: 'evaluation',
+      evaluationId: reviewEvaluation.id,
+      verdict: 'needs_review',
+    },
+  });
   console.log(`Seeded M3 traces in project ${project.id}`);
+  console.log(`Seeded M9 review item ${reviewEvaluation.id}`);
 }
 
 try {
