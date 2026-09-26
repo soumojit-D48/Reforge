@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AiModule } from './ai/ai.module.js';
+import { AnnotationsModule } from './annotations/annotations.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { IngestionModule } from './ingestion/ingestion.module.js';
 import { EvaluationsModule } from './evaluations/evaluations.module.js';
@@ -37,6 +38,7 @@ import { TracesModule } from './traces/traces.module.js';
       },
     }),
     AiModule,
+    AnnotationsModule,
     AuthModule,
     IngestionModule,
     EvaluationsModule,
