@@ -30,7 +30,18 @@ describe('EvaluationsService', () => {
       evaluation: { create: vi.fn().mockResolvedValue(created), update: vi.fn() },
     };
     const queue = { add: vi.fn().mockResolvedValue(undefined) };
-    const service = new EvaluationsService(prisma as never, queue as never);
+    const config = {
+      get: vi.fn().mockReturnValue(undefined),
+    };
+    const annotations = {
+      enqueueEvaluationReview: vi.fn().mockResolvedValue(undefined),
+    };
+    const service = new EvaluationsService(
+      prisma as never,
+      config as never,
+      annotations as never,
+      queue as never,
+    );
     const result = await service.create({ targetType: EvaluationTargetType.trace, targetId: 'trace-1', evaluatorType: EvaluatorType.exact_match, config: { expected: { answer: 'ok' } } });
     expect(result.id).toBe('evaluation-1');
     expect(queue.add).toHaveBeenCalledWith('run-evaluation', { evaluationId: 'evaluation-1' }, expect.objectContaining({ attempts: 3 }));

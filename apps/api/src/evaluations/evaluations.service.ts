@@ -1,11 +1,14 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
 import { EvaluationStatus, EvaluationTargetType, EvaluatorType, Prisma } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { EVALUATION_JOB_OPTIONS, EVALUATION_QUEUE, type EvaluationJob } from './evaluation.constants.js';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto.js';
 import type { EvaluatorResult } from './evaluators/evaluator.interface.js';
+import { AnnotationsService } from '../annotations/annotations.service.js';
+import { DEFAULT_REVIEW_CONFIDENCE_THRESHOLD } from '../annotations/annotations.constants.js';
 
 interface EvaluationViewSource {
   id: string;
@@ -72,6 +75,8 @@ function finalOutput(trace: { input: Prisma.JsonValue | null; spans: { output: P
 export class EvaluationsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly annotations: AnnotationsService,
     @InjectQueue(EVALUATION_QUEUE) private readonly queue: Queue<EvaluationJob>,
   ) {}
 
@@ -134,6 +139,26 @@ export class EvaluationsService {
         completedAt: new Date(),
       },
     });
+
+    if (result.confidence !== null) {
+      await this.annotations.enqueueEvaluationReview(
+        evaluationId,
+        result.confidence,
+        this.reviewConfidenceThreshold(),
+      );
+    }
+  }
+
+  private reviewConfidenceThreshold(): number {
+    const configured = Number(
+      this.config.get<string>('REVIEW_CONFIDENCE_THRESHOLD'),
+    );
+
+    if (!Number.isFinite(configured) || configured < 0 || configured > 1) {
+      return DEFAULT_REVIEW_CONFIDENCE_THRESHOLD;
+    }
+
+    return configured;
   }
 
   async markFailed(evaluationId: string, error: Error): Promise<void> {
