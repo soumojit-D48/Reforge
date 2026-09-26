@@ -104,6 +104,9 @@ export default function ProjectPage({
           <Link href={`/projects/${projectId}/tests`} className="text-link-button">
             Regression tests
           </Link>
+          <Link href={`/projects/${projectId}/review`} className="text-link-button">
+            Review queue
+          </Link>
       </div>
 
       {freshKey !== null && (
