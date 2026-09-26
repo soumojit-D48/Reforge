@@ -185,6 +185,50 @@ export interface TestRun {
   completedAt: string | null;
   results: TestRunResult[];
 }
+
+export type AnnotationVerdict =
+  | 'correct'
+  | 'incorrect'
+  | 'unsafe'
+  | 'needs_review'
+  | 'wrong_category';
+
+export interface ReviewQueueItem {
+  id: string;
+  evaluationId: string;
+  verdict: AnnotationVerdict;
+  createdAt: string;
+  evaluatorType: EvaluatorType;
+  score: number | null;
+  confidence: number | null;
+  reason: string | null;
+  targetTraceId: string | null;
+}
+
+export interface ReviewDetail extends ReviewQueueItem {
+  input: unknown;
+  output: unknown;
+  evaluatorVersion: string | null;
+  rubricVersion: string | null;
+  suggestedCategories: {
+    category: string;
+    confidence: number | null;
+    source: string;
+    note: string | null;
+  }[];
+  spans: {
+    id: string;
+    type: string;
+    name: string;
+    input: unknown;
+    output: unknown;
+    arguments: unknown;
+    result: unknown;
+    error: unknown;
+  }[];
+  note: string | null;
+  reviewerId: string | null;
+}
 export type ReplayResolution = {
   prompt: ReplayResolutionValue;
   tool_arguments: ReplayResolutionValue;
@@ -509,4 +553,27 @@ export const api = {
 
   getTestRun: (token: string, runId: string) =>
     request<TestRun>(`/test-runs/${runId}`, { token }),
+
+  listReviewQueue: (token: string, projectId: string) =>
+    request<ReviewQueueItem[]>(
+      `/projects/${projectId}/annotations/queue?status=needs_review`,
+      { token },
+    ),
+
+  getReviewDetail: (token: string, projectId: string, annotationId: string) =>
+    request<ReviewDetail>(
+      `/projects/${projectId}/annotations/${annotationId}`,
+      { token },
+    ),
+
+  submitReview: (
+    token: string,
+    projectId: string,
+    annotationId: string,
+    input: { verdict: AnnotationVerdict; note?: string },
+  ) =>
+    request<ReviewDetail>(
+      `/projects/${projectId}/annotations/${annotationId}`,
+      { method: 'PATCH', body: input, token },
+    ),
 };
