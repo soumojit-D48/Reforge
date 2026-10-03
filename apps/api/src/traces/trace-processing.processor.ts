@@ -9,6 +9,8 @@ import {
   type TraceProcessingJob,
 } from '../ingestion/ingestion.constants.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { REALTIME_EVENTS } from '../realtime/realtime.constants.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 /**
  * USD per 1K tokens, by model. Deliberately a small static table of
@@ -28,6 +30,7 @@ export class TraceProcessingProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: OpenRouterService,
+    private readonly realtime: RealtimeService,
   ) {
     super();
   }
@@ -51,10 +54,23 @@ export class TraceProcessingProcessor extends WorkerHost {
         this.logger.error(
           `trace-processing failed permanently for ${traceId}: ${(err as Error).message}`,
         );
-        await this.prisma.trace.updateMany({
+        const updated = await this.prisma.trace.updateMany({
           where: { id: traceId },
           data: { status: 'processing_error' },
         });
+        if (updated.count > 0) {
+          const failedTrace = await this.prisma.trace.findUnique({
+            where: { id: traceId },
+            select: { projectId: true },
+          });
+          if (failedTrace !== null) {
+            this.realtime.emitToProject(
+              failedTrace.projectId,
+              REALTIME_EVENTS.runStatusChanged,
+              { traceId, status: 'processing_error' },
+            );
+          }
+        }
       }
       throw err;
     }
@@ -102,6 +118,11 @@ export class TraceProcessingProcessor extends WorkerHost {
       where: { id: traceId },
       data: { totalDurationMs, totalCost, status },
     });
+    this.realtime.emitToProject(
+      trace.projectId,
+      REALTIME_EVENTS.runStatusChanged,
+      { traceId, status },
+    );
   }
 
   private computeDuration(trace: {

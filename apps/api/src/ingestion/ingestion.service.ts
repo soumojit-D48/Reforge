@@ -19,6 +19,8 @@ import {
   type TraceProcessingJob,
 } from './ingestion.constants.js';
 import type { IngestTraceDto } from './dto/ingest-trace.dto.js';
+import { REALTIME_EVENTS, type SpanCreatedPayload } from '../realtime/realtime.constants.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 export interface IngestResult {
   traceId: string;
@@ -45,6 +47,7 @@ export class IngestionService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
+    private readonly realtime: RealtimeService,
     @InjectQueue(TRACE_PROCESSING_QUEUE)
     private readonly traceQueue: Queue<TraceProcessingJob>,
   ) {}
@@ -141,7 +144,34 @@ export class IngestionService {
       );
     }
 
+    await this.emitCreatedSpans(projectId, traceId);
+
     return { traceId, duplicate: false };
+  }
+
+  private async emitCreatedSpans(projectId: string, traceId: string): Promise<void> {
+    const spans = await this.prisma.span.findMany({
+      where: { traceId },
+      orderBy: { startedAt: 'asc' },
+      select: {
+        id: true,
+        type: true,
+        name: true,
+        input: true,
+        output: true,
+        arguments: true,
+        result: true,
+        error: true,
+      },
+    });
+    for (const span of spans) {
+      const payload: SpanCreatedPayload = { traceId, span };
+      this.realtime.emitToProject(
+        projectId,
+        REALTIME_EVENTS.spanCreated,
+        payload,
+      );
+    }
   }
 
   private rateLimitMax(): number {
