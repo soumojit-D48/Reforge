@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { useEvaluationList, useEvaluationMutation, useEvaluationOverrideMutation, useEvaluationStatus } from '../../hooks/use-replay-mutation';
 import type { EvaluationTargetType, EvaluatorType } from '../../lib/api-client';
@@ -32,11 +33,13 @@ export function EvaluationPanel({ targetType, targetId }: { targetType: Evaluati
   const createMutation = useEvaluationMutation();
   const evaluation = useEvaluationStatus(evaluationId);
   const overrideMutation = useEvaluationOverrideMutation(evaluationId);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (evaluationId !== null || createMutation.isPending) return;
     const latest = evaluations.data?.[0];
-    if (evaluationId === null && latest !== undefined) setEvaluationId(latest.id);
-  }, [evaluationId, evaluations.data]);
+    if (latest !== undefined) setEvaluationId(latest.id);
+  }, [createMutation.isPending, evaluationId, evaluations.data]);
 
   useEffect(() => {
     if (evaluation.data === undefined) return;
@@ -48,7 +51,12 @@ export function EvaluationPanel({ targetType, targetId }: { targetType: Evaluati
     try {
       const config = parseJson(configText, 'Evaluator config');
       setConfigError(null);
-      createMutation.mutate({ targetType, targetId, evaluatorType, config }, { onSuccess: (created) => { setEvaluationId(created.id); void evaluations.refetch(); } });
+      setEvaluationId(null);
+      createMutation.mutate({ targetType, targetId, evaluatorType, config }, { onSuccess: (created) => {
+        queryClient.setQueryData(['evaluation', created.id], created);
+        setEvaluationId(created.id);
+        void evaluations.refetch();
+      } });
     } catch (error) {
       createMutation.reset();
       setConfigError(error instanceof Error ? error.message : 'Invalid evaluator config');

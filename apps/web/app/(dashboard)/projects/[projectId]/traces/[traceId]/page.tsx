@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { TraceTimeline } from '../../../../../../components/timeline/TraceTimeline';
 import { EvaluationPanel } from '../../../../../../components/evaluations/EvaluationPanel';
 import { SaveRegressionTestForm } from '../../../../../../components/regression/SaveRegressionTestForm';
@@ -20,6 +20,7 @@ import type {
   ReplayResolutionValue,
 } from '../../../../../../lib/api-client';
 import { Button } from '../../../../../../components/ui/button';
+import { useProjectSocket } from '../../../../../../hooks/use-project-socket';
 import { ArrowLeft, Check, CircleAlert, Clock3, DollarSign, GitBranch, Play, Save } from 'lucide-react';
 
 const FAILURE_CATEGORIES: { value: FailureCategory; label: string }[] = [
@@ -61,6 +62,7 @@ export default function TracePage({
   params: Promise<{ projectId: string; traceId: string }>;
 }): React.JSX.Element {
   const { projectId, traceId } = use(params);
+  const { viewTrace, stopViewing, isTraceViewedByOther } = useProjectSocket();
   const trace = useTrace(traceId);
   const tagMutation = useFailureTagMutation(traceId);
   const replayMutation = useReplayMutation(traceId);
@@ -79,6 +81,11 @@ export default function TracePage({
     model: 'changed',
     temperature: 'reused',
   });
+
+  useEffect(() => {
+    viewTrace(traceId);
+    return () => stopViewing(traceId);
+  }, [stopViewing, traceId, viewTrace]);
 
   if (trace.isPending) {
     return <p className="state-panel trace-state">Loading trace...</p>;
@@ -131,7 +138,10 @@ export default function TracePage({
           <h1>{item.name}</h1>
           <p>{new Date(item.startedAt).toLocaleString()} · {item.environment ?? 'unknown environment'}</p>
         </div>
-        <span className={`run-status run-status-${item.status}`}>{item.status.replace('_', ' ')}</span>
+        <div className="trace-live-status">
+          <span className={`run-status run-status-${item.status}`}>{item.status.replace('_', ' ')}</span>
+          {isTraceViewedByOther(traceId) ? <span className="presence-indicator">Another reviewer is viewing this run</span> : null}
+        </div>
       </header>
       {item.replay !== null ? <section className="replay-result-banner"><div><p className="mono">REPLAY EXECUTION</p><strong>{item.replay.status}</strong><span>Changed {item.replay.changedField}</span></div><div className="replay-resolution-summary">{Object.entries(item.replay.fieldResolution).map(([field, value]) => <span key={field} className={`resolution-chip resolution-${String(value)}`}><b>{field}</b> {String(value)}</span>)}</div></section> : null}
       <section className="metric-grid">
