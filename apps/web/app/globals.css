@@ -2426,6 +2426,9 @@ textarea.app-input {
 .run-status-success { color: var(--color-fixed); border-color: color-mix(in oklab, var(--color-fixed) 50%, var(--color-border)); }
 .run-status-failed, .run-status-processing_error { color: var(--color-failure); border-color: color-mix(in oklab, var(--color-failure) 50%, var(--color-border)); }
 .run-status-running { color: var(--color-signal); border-color: color-mix(in oklab, var(--color-signal) 50%, var(--color-border)); }
+.trace-live-status { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.presence-indicator { padding: 5px 8px; border: 1px solid color-mix(in oklab, var(--color-signal) 55%, var(--color-border)); color: var(--color-signal); font-family: var(--font-mono); font-size: .55rem; text-transform: uppercase; }
+.socket-status-banner { margin: 0; padding: 8px 14px; border-bottom: 1px solid color-mix(in oklab, var(--color-warning) 55%, var(--color-border)); background: color-mix(in oklab, var(--color-warning) 8%, var(--color-card)); color: var(--color-warning); font-family: var(--font-mono); font-size: .58rem; }
 .pagination-row { display: flex; justify-content: flex-end; }
 .back-link { width: fit-content; color: var(--color-signal); font-size: .72rem; }
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
