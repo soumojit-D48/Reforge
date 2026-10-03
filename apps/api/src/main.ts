@@ -11,6 +11,7 @@ import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor.js';
 import { ReforgeLogger } from './common/logging/reforge-logger.js';
+import { RedisIoAdapter } from './realtime/redis-io.adapter.js';
 
 function parseOrigins(raw: string | undefined): string[] {
   if (raw === undefined || raw.trim() === '') {
@@ -26,6 +27,9 @@ async function bootstrap(): Promise<void> {
   const logger = new ReforgeLogger();
   const app = await NestFactory.create(AppModule, { logger });
   const config = app.get(ConfigService);
+  const websocketAdapter = new RedisIoAdapter(app, config);
+  await websocketAdapter.connectToRedis();
+  app.useWebSocketAdapter(websocketAdapter);
 
   // the default; only health opts out via VERSION_NEUTRAL.
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });

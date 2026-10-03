@@ -16,6 +16,9 @@ export class CorrelationIdInterceptor implements NestInterceptor {
   private readonly logger = new Logger(CorrelationIdInterceptor.name);
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
     const request = context
       .switchToHttp()
       .getRequest<Request & { correlationId?: string }>();

@@ -14,6 +14,7 @@ import { ProjectsModule } from './projects/projects.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { ReplayModule } from './replay/replay.module.js';
 import { RegressionModule } from './regression/regression.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 import { TracesModule } from './traces/traces.module.js';
 
 @Module({
@@ -46,6 +47,7 @@ import { TracesModule } from './traces/traces.module.js';
     ProjectsModule,
     ReplayModule,
     RegressionModule,
+    RealtimeModule,
     TracesModule,
   ],
   controllers: [AppController],
