@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { EvaluationStatus, EvaluationTargetType, EvaluatorType, Prisma } from '@prisma/client';
@@ -9,6 +9,8 @@ import { CreateEvaluationDto } from './dto/create-evaluation.dto.js';
 import type { EvaluatorResult } from './evaluators/evaluator.interface.js';
 import { AnnotationsService } from '../annotations/annotations.service.js';
 import { DEFAULT_REVIEW_CONFIDENCE_THRESHOLD } from '../annotations/annotations.constants.js';
+import { REALTIME_EVENTS } from '../realtime/realtime.constants.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 interface EvaluationViewSource {
   id: string;
@@ -73,11 +75,14 @@ function finalOutput(trace: { input: Prisma.JsonValue | null; spans: { output: P
 
 @Injectable()
 export class EvaluationsService {
+  private readonly logger = new Logger(EvaluationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly annotations: AnnotationsService,
     @InjectQueue(EVALUATION_QUEUE) private readonly queue: Queue<EvaluationJob>,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async create(dto: CreateEvaluationDto): Promise<EvaluationView> {
@@ -94,13 +99,37 @@ export class EvaluationsService {
         output: jsonInput(extracted.output),
       },
     });
-    try {
-      await this.queue.add('run-evaluation', { evaluationId: created.id }, { ...EVALUATION_JOB_OPTIONS, jobId: created.id });
-    } catch (error) {
-      await this.prisma.evaluation.update({ where: { id: created.id }, data: { status: EvaluationStatus.failed, output: { error: 'Evaluation could not be queued' } } });
-      throw error;
-    }
+    void this.enqueue(created.id);
     return toView(created);
+  }
+
+  private async enqueue(evaluationId: string): Promise<void> {
+    try {
+      await this.queue.add(
+        'run-evaluation',
+        { evaluationId },
+        { ...EVALUATION_JOB_OPTIONS, jobId: evaluationId },
+      );
+    } catch (error) {
+      this.logger.error(
+        `evaluation could not be queued for ${evaluationId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      try {
+        await this.prisma.evaluation.update({
+          where: { id: evaluationId },
+          data: {
+            status: EvaluationStatus.failed,
+            output: { error: 'Evaluation could not be queued' },
+          },
+        });
+      } catch (updateError) {
+        this.logger.error(
+          `evaluation failure state could not be saved for ${evaluationId}`,
+          updateError instanceof Error ? updateError.stack : undefined,
+        );
+      }
+    }
   }
 
   async getById(evaluationId: string): Promise<EvaluationView> {
@@ -145,6 +174,29 @@ export class EvaluationsService {
         evaluationId,
         result.confidence,
         this.reviewConfidenceThreshold(),
+      );
+    }
+
+    const completed = await this.prisma.evaluation.findUnique({
+      where: { id: evaluationId },
+      select: {
+        score: true,
+        confidence: true,
+        trace: { select: { projectId: true } },
+        replay: { select: { sourceTrace: { select: { projectId: true } } } },
+      },
+    });
+    const projectId = completed?.trace?.projectId
+      ?? completed?.replay?.sourceTrace.projectId;
+    if (completed !== null && projectId !== undefined) {
+      this.realtime.emitToProject(
+        projectId,
+        REALTIME_EVENTS.evaluationCompleted,
+        {
+          evaluationId,
+          score: completed.score,
+          confidence: completed.confidence,
+        },
       );
     }
   }
