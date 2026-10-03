@@ -98,6 +98,9 @@ export function useEvaluationStatus(evaluationId: string | null) {
       return api.getEvaluation(token, evaluationId as string);
     },
     enabled: evaluationId !== null,
+    refetchOnMount: 'always',
+    refetchOnReconnect: 'always',
+    staleTime: 0,
     refetchInterval: (query) => query.state.data?.status === 'completed' || query.state.data?.status === 'failed' ? false : 1000,
   });
 }
