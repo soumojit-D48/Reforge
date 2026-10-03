@@ -7,10 +7,12 @@ import {
 import { ReplayController } from './replay.controller.js';
 import { ReplayExecutionProcessor } from './replay-execution.processor.js';
 import { ReplayService } from './replay.service.js';
+import { RealtimeModule } from '../realtime/realtime.module.js';
 
 @Module({
   imports: [
     AiModule,
+    RealtimeModule,
     BullModule.registerQueue({ name: REPLAY_EXECUTION_QUEUE }),
   ],
   controllers: [ReplayController],

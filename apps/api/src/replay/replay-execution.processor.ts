@@ -14,6 +14,8 @@ import { ReplayService } from './replay.service.js';
 import {
   type ReplayResolution,
 } from './replay-resolution.js';
+import { REALTIME_EVENTS, type SpanCreatedPayload } from '../realtime/realtime.constants.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 function jsonText(value: unknown): string {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null);
@@ -32,6 +34,7 @@ export class ReplayExecutionProcessor extends WorkerHost {
     private readonly redis: RedisService,
     private readonly replays: ReplayService,
     private readonly ai: OpenRouterService,
+    private readonly realtime: RealtimeService,
   ) {
     super();
   }
@@ -49,8 +52,18 @@ export class ReplayExecutionProcessor extends WorkerHost {
     let terminalFailure = false;
     try {
       await this.replays.markRunning(replay.id);
+      this.realtime.emitToProject(
+        replay.sourceTrace.projectId,
+        REALTIME_EVENTS.replayProgress,
+        { replayId: replay.id, step: 'replay', status: 'running' },
+      );
       const resultTraceId = await this.execute(replay, lockOwner);
       await this.replays.markCompleted(replay.id, resultTraceId);
+      this.realtime.emitToProject(
+        replay.sourceTrace.projectId,
+        REALTIME_EVENTS.replayCompleted,
+        { replayId: replay.id, resultTraceId },
+      );
     } catch (error) {
       const attempts = REPLAY_EXECUTION_JOB_OPTIONS.attempts ?? 1;
       if (job.attemptsMade + 1 >= attempts || error instanceof UnrecoverableError) {
@@ -64,6 +77,11 @@ export class ReplayExecutionProcessor extends WorkerHost {
           },
         });
         await this.replays.markFailed(replay.id);
+        this.realtime.emitToProject(
+          replay.sourceTrace.projectId,
+          REALTIME_EVENTS.replayProgress,
+          { replayId: replay.id, step: 'replay', status: 'failed' },
+        );
         this.logger.error(
           `replay-execution failed permanently for ${replay.id}: ${(error as Error).message}`,
         );
@@ -130,6 +148,11 @@ export class ReplayExecutionProcessor extends WorkerHost {
       a.startedAt.getTime() - b.startedAt.getTime(),
     );
     for (const span of orderedSpans) {
+      this.realtime.emitToProject(
+        source.projectId,
+        REALTIME_EVENTS.replayProgress,
+        { replayId: replay.id, step: span.name, status: 'running' },
+      );
       const model =
         resolution.model === 'changed' && span.type === SpanType.llm_call
           ? jsonText(replay.changedValue)
@@ -180,6 +203,20 @@ export class ReplayExecutionProcessor extends WorkerHost {
         },
       });
       idMap.set(span.id, created.id);
+      const spanPayload: SpanCreatedPayload = {
+        traceId: result.id,
+        span: created,
+      };
+      this.realtime.emitToProject(
+        source.projectId,
+        REALTIME_EVENTS.spanCreated,
+        spanPayload,
+      );
+      this.realtime.emitToProject(
+        source.projectId,
+        REALTIME_EVENTS.replayProgress,
+        { replayId: replay.id, step: span.name, status: 'completed' },
+      );
     }
     for (const span of orderedSpans) {
       if (span.parentId !== null) {

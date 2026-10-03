@@ -8,6 +8,8 @@ import type { ReplayView } from '../replay/replay.service.js';
 import type { ReplayResolution } from '../replay/replay-resolution.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TEST_RUN_QUEUE, type TestRunJob } from './regression.constants.js';
+import { REALTIME_EVENTS } from '../realtime/realtime.constants.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 const POLL_INTERVAL_MS = 250;
 const MAX_POLLS = 120;
@@ -31,6 +33,7 @@ export class TestRunProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly replays: ReplayService,
     private readonly evaluations: EvaluationsService,
+    private readonly realtime: RealtimeService,
   ) { super(); }
 
   async process(job: Job<TestRunJob>): Promise<void> {
@@ -49,6 +52,15 @@ export class TestRunProcessor extends WorkerHost {
       for (const membership of run.testSuite.tests) {
         const test = membership.regressionTest;
         const result = await this.executeTest(run.id, test, run.promptVersion, run.model);
+        this.realtime.emitToProject(
+          run.testSuite.projectId,
+          REALTIME_EVENTS.testRunProgress,
+          {
+            testRunId: run.id,
+            testId: test.id,
+            result,
+          },
+        );
         if (result.passed === true) passedCount += 1;
         else if (result.passed === false) failedCount += 1;
         else skippedCount += 1;
@@ -57,9 +69,29 @@ export class TestRunProcessor extends WorkerHost {
         where: { id: run.id },
         data: { status: TestRunStatus.completed, passedCount, failedCount, skippedCount, completedAt: new Date() },
       });
+      this.realtime.emitToProject(
+        run.testSuite.projectId,
+        REALTIME_EVENTS.testRunCompleted,
+        {
+          testRunId: run.id,
+          passed: passedCount,
+          failed: failedCount,
+          skipped: skippedCount,
+        },
+      );
     } catch (error) {
       const failure = error instanceof Error ? error : new Error('Test run failed');
       await this.prisma.testRun.update({ where: { id: run.id }, data: { status: TestRunStatus.failed, completedAt: new Date() } });
+      this.realtime.emitToProject(
+        run.testSuite.projectId,
+        REALTIME_EVENTS.testRunCompleted,
+        {
+          testRunId: run.id,
+          passed: passedCount,
+          failed: failedCount,
+          skipped: skippedCount,
+        },
+      );
       this.logger.error(`test run failed permanently for ${run.id}: ${failure.message}`);
       throw error;
     }
